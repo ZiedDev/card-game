@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "nodemon --ext * --ignore ./public/uploads/ ./src/app.js",
+    "start": "set NODE_ENV=production & node ./src/app.js"
   },
   "repository": {
     "type": "git",
@@ -19,7 +21,13 @@
   "homepage": "https://github.com/ZiedDev/card-game#readme",
   "dependencies": {
     "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
     "express": "^4.21.2",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "connect-livereload": "^0.6.1",
+    "livereload": "^0.9.3",
+    "nodemon": "^3.1.9"
   }
 }
