@@ -16,8 +16,9 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const { log } = require('console');
 const io = new Server(server);
+let rooms = new Set();
+let roomsData = new Map();
 
 // live reload
 if (nodeEnv == 'development') {
@@ -46,73 +47,100 @@ app.get('/', (req, res) => {
 });
 
 app.post('/createRoom', (req, res) => {
-    let roomCode = generateRandomString(20)
-
-    while (roomCode in io.sockets.adapter.rooms) {
-        roomCode = generateRandomString(20)
+    let roomCode = generateRandomString(20);
+    while (rooms.has(roomCode)) {
+        roomCode = generateRandomString(20);
     }
 
-    io.sockets.adapter.rooms.set(roomCode, new Set())
+    rooms.add(roomCode);
+    roomsData.set(roomCode, {
+        started: false,
+        owner: req.body.userId,
+        users: new Set([req.body.userId])
+    });
 
-    res.redirect(`/room/${roomCode}`)
+    res.send(JSON.stringify(roomCode));
+});
+
+app.post('/room/:roomId', (req, res) => {
+    const roomId = req.params.roomId
+    const userId = req.body.userId
+    const confName = req.body.confName
+
+    if (!rooms.has(roomId)) { // redundant
+        res.send('"false"');
+        return;
+    };
+    const roomData = roomsData.get(roomId);
+    if (roomData.users.has(userId)) {
+        res.send('"rejoin"');
+        return;
+    }
+    if (roomData.started) {
+        res.send('"false"');
+        return;
+    }
+    if (confName) {
+        roomsData.get(roomId).users.add(userId);
+        res.send('"join"');
+        return;
+    } else {
+        res.send('"conf_join"');
+        return;
+    }
 });
 
 app.get('/room/:roomId', (req, res) => {
     const roomId = req.params.roomId
 
-    if (io.sockets.adapter.rooms.has(roomId)) {
-        res.render('room', { roomId, });
+    if (rooms.has(roomId)) {
+        res.render('room', { roomId });
     } else {
-        res.render('error', { errorCode: 403, errorMessage: 'Forbidden' })
+        res.render('error', { errorCode: 404, errorMessage: 'Room not found' })
     }
 });
 
-app.use((request, result, next) => {
-    result.status(404);
+app.use((req, res, next) => {
+    res.status(404);
 
-    if (request.accepts('html')) {
-        result.render('error', { errorCode: 404, errorMessage: 'Page not found' });
+    if (req.accepts('html')) {
+        res.render('error', { errorCode: 404, errorMessage: 'Page not found' });
         return;
     }
 
-    if (request.accepts('json')) {
-        result.json({ error: 'Not found' });
+    if (req.accepts('json')) {
+        res.json({ error: 'Not found' });
         return;
     }
 
-    result.type('txt').send('Not found');
+    res.type('txt').send('Not found');
 });
 
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
+
     socket.on('disconnecting', () => {
-        let roomCode = socket.rooms;
-        roomCode.delete(socket.id);
-        roomCode = Array.from(roomCode)[0];
-        if (roomCode != undefined) {
-            let remainingUsers = io.sockets.adapter.rooms.get(roomCode);
-            remainingUsers.delete(socket.id);
-            io.to(roomCode).emit('update users', Array.from(remainingUsers))
-        }
     });
     socket.on('disconnect', () => {
         console.log(`user [${socket.id}] disconnected`);
     });
 
-    io.of("/").adapter.on("create-room", (room) => {
-        console.log(`room ${room} was created`);
-    });
-
-    io.of("/").adapter.on("join-room", (room, id) => {
-        console.log(`socket ${id} has joined room ${room}`);
-    });
+    socket.on('print', () => {
+        console.log(io.sockets.adapter.rooms);
+    })
 
     // non boilerplate stuff
     socket.on('join room', roomCode => {
-        socket.join(roomCode)
-        socket.emit('joined room', roomCode)
-        io.to(roomCode).emit('update users', Array.from(io.sockets.adapter.rooms.get(roomCode)))
+        socket.join(roomCode);
     })
+});
+
+io.of("/").adapter.on("create-room", (room) => {
+    console.log(`room ${room} was created`);
+});
+
+io.of("/").adapter.on("join-room", (room, id) => {
+    console.log(`socket [${id}] has joined room ${room}`);
 });
 
 server.listen(port, hostname, () => {
