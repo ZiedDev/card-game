@@ -16,6 +16,7 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
+const { log } = require('console');
 const io = new Server(server);
 
 // live reload
@@ -84,6 +85,16 @@ app.use((request, result, next) => {
 
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
+    socket.on('disconnecting', () => {
+        let roomCode = socket.rooms;
+        roomCode.delete(socket.id);
+        roomCode = Array.from(roomCode)[0];
+        if (roomCode != undefined) {
+            let remainingUsers = io.sockets.adapter.rooms.get(roomCode);
+            remainingUsers.delete(socket.id);
+            io.to(roomCode).emit('update users', Array.from(remainingUsers))
+        }
+    });
     socket.on('disconnect', () => {
         console.log(`user [${socket.id}] disconnected`);
     });
@@ -100,6 +111,7 @@ io.on('connection', socket => {
     socket.on('join room', roomCode => {
         socket.join(roomCode)
         socket.emit('joined room', roomCode)
+        io.to(roomCode).emit('update users', Array.from(io.sockets.adapter.rooms.get(roomCode)))
     })
 });
 
