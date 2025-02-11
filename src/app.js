@@ -20,6 +20,7 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 let rooms = new Set();
 let roomsData = new Map();
+let socketsData = new Map();
 
 // live reload
 if (nodeEnv == 'development') {
@@ -57,7 +58,8 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
-        users: new Set([req.body.userId])
+        users: new Set([req.body.userId]),
+        userData: {},
     });
 
     res.send(JSON.stringify(roomCode));
@@ -67,7 +69,6 @@ app.post('/room/:roomId', (req, res) => {
     const roomId = req.params.roomId
     const userId = req.body.userId
     const confName = req.body.confName
-    const time = req.body.time
 
     if (!rooms.has(roomId)) { // redundant
         res.send('"false"');
@@ -75,13 +76,7 @@ app.post('/room/:roomId', (req, res) => {
     };
     const roomData = roomsData.get(roomId);
     if (roomData.users.has(userId)) {
-        const newTime = new Date().getTime();
-        if (newTime - time < rejoinTLE) {
-            res.send('"rejoin"');
-        } else {
-            roomsData.get(roomId).users.delete(userId);
-            res.send('"late+watch"');
-        }
+        res.send('"rejoin"');
         return;
     }
     if (roomData.started) {
@@ -126,26 +121,48 @@ app.use((req, res, next) => {
 
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
+    socketsData.set(socket.id, {});
 
     socket.on('disconnecting', () => {
-        // thinking abt it
+        let socketData = socketsData.get(socket.id);
+        if (socketData.hasOwnProperty('roomCode')) {
+            let roomCode = socketData.roomCode;
+            if (!roomsData.get(roomCode).started) {
+                roomsData.get(roomCode).users.delete(socketData.userId);
+                delete roomsData.get(roomCode).userData[socketData.userId];
+                io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
+            }
+        }
     });
+
     socket.on('disconnect', () => {
+        socketsData.delete(socket.id);
         console.log(`user [${socket.id}] disconnected`);
     });
 
-    socket.on('join room', roomCode => {
-        socket.join(roomCode);
-        io.to(roomCode).emit('update data', { users: Array.from(roomsData.get(roomCode).users) })
-    })
+    socket.on('join room', data => {
+        socket.join(data.roomCode);
+        Object.entries(data).forEach(([property, value]) => {
+            socketsData.get(socket.id)[property] = value;
+        });
+        roomsData.get(data.roomCode).userData[data.userId] = data;
+        io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
+    });
+
+    socket.on('test', () => {
+        console.log('TEST:');
+        console.log('rooms:', rooms);
+        console.log('roomsData:', roomsData);
+        console.log('socketsData:', socketsData);
+    });
 });
 
 io.of("/").adapter.on("create-room", (room) => {
-    console.log(`room ${room} was created`);
+    if (rooms.has(room)) console.log(`room ${room} was created`);
 });
 
 io.of("/").adapter.on("join-room", (room, id) => {
-    console.log(`socket [${id}] has joined room ${room}`);
+    if (rooms.has(room)) console.log(`socket [${id}] has joined room ${room}`);
 });
 
 server.listen(port, hostname, () => {
