@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 636.69 636.69">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #e1e1e1;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5 {
+        stroke-width: 0px;
+      }
+
+      .cls-3 {
+        fill: #6bc64a;
+        filter: url(#drop-shadow-2);
+      }
+
+      .cls-4 {
+        fill: none;
+      }
+
+      .cls-5 {
+        fill: #8aed69;
+        filter: url(#drop-shadow-1);
+      }
+    </style>
+    <filter id="drop-shadow-1" filterUnits="userSpaceOnUse">
+      <feOffset dx="7" dy="7"/>
+      <feGaussianBlur result="blur" stdDeviation="8"/>
+      <feFlood flood-color="#000" flood-opacity=".48"/>
+      <feComposite in2="blur" operator="in"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="drop-shadow-2" filterUnits="userSpaceOnUse">
+      <feOffset dx="7" dy="7"/>
+      <feGaussianBlur result="blur-2" stdDeviation="5"/>
+      <feFlood flood-color="#000" flood-opacity=".6"/>
+      <feComposite in2="blur-2" operator="in"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <path class="cls-1" d="M512.85,318.35c0,68.01-34.91,127.87-87.78,162.63-6.62,4.35-13.51,8.31-20.66,11.84-25.94,12.82-55.16,20.03-86.06,20.03s-60.12-7.21-86.06-20.03c-7.15-3.53-14.04-7.49-20.66-11.84-52.87-34.76-87.78-94.62-87.78-162.63,0-107.42,87.08-194.5,194.5-194.5s194.5,87.08,194.5,194.5Z"/>
+      <path class="cls-5" d="M407.34,285.35c0,49.15-62.52,124.51-89,124.51-22.04,0-89-75.36-89-124.51s39.85-89,89-89,89,39.85,89,89Z"/>
+      <path class="cls-3" d="M404.41,492.82c-25.94,12.82-55.16,20.03-86.06,20.03s-60.12-7.21-86.06-20.03c22.08-35.22,52.48-56.97,86.06-56.97s63.97,21.75,86.06,56.97Z"/>
+      <ellipse class="cls-2" cx="279.09" cy="287.54" rx="19.57" ry="31.3" transform="translate(-58.33 71.4) rotate(-13.21)"/>
+      <ellipse class="cls-2" cx="357.59" cy="287.54" rx="31.3" ry="19.57" transform="translate(-4.07 569.95) rotate(-76.79)"/>
+      <circle class="cls-4" cx="318.35" cy="318.35" r="318.35"/>
+    </g>
+  </g>
+</svg>

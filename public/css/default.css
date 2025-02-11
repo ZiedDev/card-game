@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+:root {
+    --background: #882938;
+    --background-alt: #efe1e3;
+    --font: #242222;
+    --font-alt: #efe1e3;
+    --gray: #aaaaaa;
+    --accent-green: #a9ff77;
+    --accent-green-darker: #89ce62;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--background);
+    height: 100vh;
+}
+
+body * {
+    color: var(--font);
+    font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
