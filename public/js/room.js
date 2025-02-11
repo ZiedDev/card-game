@@ -28,10 +28,14 @@ async function getPlayResponse() {
 }
 
 let socket;
+let currentRoomUsers = [];
+let initialRoomJoin = true;
+const playersList = document.getElementById('players-list');
+
 (async () => {
 
-    const isPlay = await getPlayResponse();
-    if (isPlay != null) {
+    const isNotWatch = await getPlayResponse();
+    if (isNotWatch != null) {
         socket = io({
             'reconnection': true,
             'reconnectionDelay': 1000,
@@ -40,7 +44,7 @@ let socket;
         });
     }
 
-    if (isPlay) {
+    if (isNotWatch) {
         socket.emit('join room', {
             userId: userId.val,
             userName: userName.val,
@@ -49,11 +53,44 @@ let socket;
         });
 
         socket.on('update usersData', data => {
-            socket.usersData = data;
+            socket.roomData = data;
+
+            if (initialRoomJoin) {
+                Object.values(socket.roomData.usersData).forEach(userData => {
+                    const playerDOM = `
+                    <div class="player" id="${userData.userId}-player-list">
+                        <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
+                        <h2>${escapeHtml(userData.userName)}</h2>
+                    </div>`;
+
+                    playersList.appendChild(htmlToElement(playerDOM));
+                });
+            }
+
+            initialRoomJoin = false
+        });
+
+        socket.on('update usersData changeonly', data => {
+            if (!initialRoomJoin) {
+                console.log('changeonly', data);
+                const [userData, connecting] = data;
+
+                if (connecting) {
+                    const playerDOM = `
+                    <div class="player" id="${userData.userId}-player-list">
+                        <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
+                        <h2>${escapeHtml(userData.userName)}</h2>
+                    </div>`
+
+                    playersList.appendChild(htmlToElement(playerDOM));
+                } else {
+                    const childToRemove = document.getElementById(`${userData.userId}-player-list`)
+                    playersList.removeChild(childToRemove)
+                }
+            }
         });
 
     } else {
         console.log('watch mode');
     }
-
 })();
