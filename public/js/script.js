@@ -32,25 +32,13 @@ let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', '0');
 let roomCode = new StoredValue('roomCode', '');
-let time = new StoredValue('time', '');
 
-console.log(userId, userName, userPfp, roomCode, time);
+console.log(userId, userName, userPfp, roomCode);
 
-function setName() {
-    userId.val = Math.floor(Math.random() * 1000000);
-    userName.val = window.crypto.randomUUID().split('-')[0];
-}
-
-function saveName() {
-    userId.update();
-    userName.update();
-}
-
-function resetName() {
+function _resetUserStorage() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('roomCode');
-    localStorage.removeItem('time');
 }
 
 async function createRoom() {
@@ -60,9 +48,9 @@ async function createRoom() {
         body: JSON.stringify({ userId: userId.val }),
     }).then(response => {
         response.json().then(resRoomCode => {
-            // userId.update(); userName.update();
-            roomCode.val = resRoomCode; // kinda redundant
-            time.val = new Date().getTime();
+            // userId and userName should be set by now
+            // roomCode will be set right after
+            roomCode.val = resRoomCode; // redundant
 
             window.location.href = '/room/' + resRoomCode;
         })

@@ -67,7 +67,6 @@ app.post('/room/:roomId', (req, res) => {
     const roomId = req.params.roomId
     const userId = req.body.userId
     const confName = req.body.confName
-    const time = req.body.time
 
     if (!rooms.has(roomId)) { // redundant
         res.send('"false"');
@@ -75,13 +74,7 @@ app.post('/room/:roomId', (req, res) => {
     };
     const roomData = roomsData.get(roomId);
     if (roomData.users.has(userId)) {
-        const newTime = new Date().getTime();
-        if (newTime - time < rejoinTLE) {
-            res.send('"rejoin"');
-        } else {
-            roomsData.get(roomId).users.delete(userId);
-            res.send('"late+watch"');
-        }
+        res.send('"rejoin"');
         return;
     }
     if (roomData.started) {
@@ -128,8 +121,17 @@ io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
 
     socket.on('disconnecting', () => {
-        // thinking abt it
+        let room = socket.rooms;
+        room.delete(socket.id);
+        room = room.values().next().value;
+        if (room && !roomsData.get(room).started) {
+
+        }
     });
+
+    console.log(io.sockets.adapter.rooms);
+    
+
     socket.on('disconnect', () => {
         console.log(`user [${socket.id}] disconnected`);
     });
