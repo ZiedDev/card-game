@@ -58,7 +58,8 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
-        users: new Set([req.body.userId])
+        users: new Set([req.body.userId]),
+        userData: {},
     });
 
     res.send(JSON.stringify(roomCode));
@@ -128,9 +129,9 @@ io.on('connection', socket => {
             let roomCode = socketData.roomCode;
             if (!roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).users.delete(socketData.userId);
+                delete roomsData.get(roomCode).userData[socketData.userId];
+                io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
             }
-        } else {
-            console.log('whata ligma', socket.id);
         }
     });
 
@@ -139,16 +140,13 @@ io.on('connection', socket => {
         console.log(`user [${socket.id}] disconnected`);
     });
 
-    socket.on('join room', roomCode => {
-        socket.join(roomCode);
-        io.to(roomCode).emit('update data', { users: Array.from(roomsData.get(roomCode).users) })
-    })
-
-    socket.on('update data', data => {
+    socket.on('join room', data => {
+        socket.join(data.roomCode);
         Object.entries(data).forEach(([property, value]) => {
             socketsData.get(socket.id)[property] = value;
         });
-        // console.log(`updated data [${socket.id}] `, socketsData.get(socket.id));
+        roomsData.get(data.roomCode).userData[data.userId] = data;
+        io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
     });
 
     socket.on('test', () => {
@@ -156,8 +154,7 @@ io.on('connection', socket => {
         console.log('rooms:', rooms);
         console.log('roomsData:', roomsData);
         console.log('socketsData:', socketsData);
-
-    })
+    });
 });
 
 io.of("/").adapter.on("create-room", (room) => {

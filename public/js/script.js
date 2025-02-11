@@ -30,7 +30,7 @@ class StoredValue {
 
 let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
-let userPfp = new StoredValue('userPfp', '0');
+let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
 
 console.log(userId, userName, userPfp, roomCode);

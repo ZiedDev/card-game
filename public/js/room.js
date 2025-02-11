@@ -41,20 +41,15 @@ let socket;
     }
 
     if (isPlay) {
-        socket.emit('join room', roomCode.val);
-
-        socket.data = {
+        socket.emit('join room', {
             userId: userId.val,
             userName: userName.val,
+            userPfp: userPfp.val,
             roomCode: roomCode.val,
-        }
-        socket.emit('update data', socket.data);
+        });
 
-        socket.on('update data', data => {
-            Object.entries(data).forEach(([property, value]) => {
-                socket.data[property] = value;
-            });
-            console.log('updated data', socket.data);
+        socket.on('update usersData', data => {
+            socket.usersData = data;
         });
 
     } else {
