@@ -20,6 +20,7 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 let rooms = new Set();
 let roomsData = new Map();
+let socketsData = new Map();
 
 // live reload
 if (nodeEnv == 'development') {
@@ -119,26 +120,43 @@ app.use((req, res, next) => {
 
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
+    socketsData.set(socket.id, {});
 
     socket.on('disconnecting', () => {
-        let room = socket.rooms;
-        room.delete(socket.id);
-        room = room.values().next().value;
-        if (room && !roomsData.get(room).started) {
-
+        let socketData = socketsData.get(socket.id);
+        if (socketData.hasOwnProperty('roomCode')) {
+            let roomCode = socketData.roomCode;
+            if (!roomsData.get(roomCode).started) {
+                roomsData.get(roomCode).users.delete(socketData.userId);
+            }
+        } else {
+            console.log('whata ligma', socket.id);
         }
     });
 
-    console.log(io.sockets.adapter.rooms);
-    
-
     socket.on('disconnect', () => {
+        socketsData.delete(socket.id);
         console.log(`user [${socket.id}] disconnected`);
     });
 
     socket.on('join room', roomCode => {
         socket.join(roomCode);
         io.to(roomCode).emit('update data', { users: Array.from(roomsData.get(roomCode).users) })
+    })
+
+    socket.on('update data', data => {
+        Object.entries(data).forEach(([property, value]) => {
+            socketsData.get(socket.id)[property] = value;
+        });
+        console.log(`updated data [${socket.id}] `, socketsData.get(socket.id));
+    });
+
+    socket.on('test', () => {
+        console.log('TEST:');
+        console.log('rooms:', rooms);
+        console.log('roomsData:', roomsData);
+        console.log('socketsData:', socketsData);
+
     })
 });
 

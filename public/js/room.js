@@ -2,7 +2,7 @@ roomCode.val = window.location.pathname.split('/')[window.location.pathname.spli
 const urlParams = new URLSearchParams(window.location.search);
 
 if (userId.val == '' || userName.val == '') {
-    window.location.href = '/?r=' + roomCode.val; // put in text box
+    window.location.href = '/?r=' + roomCode.val;
 }
 
 async function getPlayResponse() {
@@ -20,17 +20,17 @@ async function getPlayResponse() {
     if (res == 'watch') {
         return false;
     } else if (res == 'conf_join') {
-        window.location.href = '/?r=' + roomCode.val; // put in text box
+        window.location.href = '/?r=' + roomCode.val;
     } else if (res == 'join' || res == 'rejoin') {
         return true;
     }
     return null
 }
 
+let socket;
 (async () => {
 
     const isPlay = await getPlayResponse();
-    let socket;
     if (isPlay != null) {
         socket = io({
             'reconnection': true,
@@ -41,13 +41,6 @@ async function getPlayResponse() {
     }
 
     if (isPlay) {
-        socket.on('update data', data => {
-            Object.entries(data).forEach(([property, value]) => {
-                socket.data[property] = value;
-            });
-            console.log('updated data', socket.data);
-        });
-
         socket.emit('join room', roomCode.val);
 
         socket.data = {
@@ -55,6 +48,15 @@ async function getPlayResponse() {
             userName: userName.val,
             roomCode: roomCode.val,
         }
+        socket.emit('update data', socket.data);
+
+        socket.on('update data', data => {
+            Object.entries(data).forEach(([property, value]) => {
+                socket.data[property] = value;
+            });
+            console.log('updated data', socket.data);
+        });
+
     } else {
         console.log('watch mode');
     }
