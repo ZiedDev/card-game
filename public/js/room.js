@@ -16,7 +16,7 @@ async function getPlayResponse() {
     });
     const res = await response.json();
 
-    console.log(res);
+    console.log('res type', res);
     if (res == 'watch') {
         return false;
     } else if (res == 'conf_join') {

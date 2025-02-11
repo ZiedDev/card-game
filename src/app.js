@@ -148,7 +148,7 @@ io.on('connection', socket => {
         Object.entries(data).forEach(([property, value]) => {
             socketsData.get(socket.id)[property] = value;
         });
-        console.log(`updated data [${socket.id}] `, socketsData.get(socket.id));
+        // console.log(`updated data [${socket.id}] `, socketsData.get(socket.id));
     });
 
     socket.on('test', () => {
@@ -161,11 +161,11 @@ io.on('connection', socket => {
 });
 
 io.of("/").adapter.on("create-room", (room) => {
-    console.log(`room ${room} was created`);
+    if (rooms.has(room)) console.log(`room ${room} was created`);
 });
 
 io.of("/").adapter.on("join-room", (room, id) => {
-    console.log(`socket [${id}] has joined room ${room}`);
+    if (rooms.has(room)) console.log(`socket [${id}] has joined room ${room}`);
 });
 
 server.listen(port, hostname, () => {
