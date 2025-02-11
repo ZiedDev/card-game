@@ -3,7 +3,7 @@ const urlParams = new URLSearchParams(window.location.search);
 let isWatch;
 
 if (userId.val == '' || userName.val == '') {
-    window.location.href = '/?room=' + roomCode.val; // put in text box
+    window.location.href = '/?r=' + roomCode.val; // put in text box
 }
 
 fetch(window.location.pathname, {
@@ -16,7 +16,7 @@ fetch(window.location.pathname, {
         if (res == 'false') {
             isWatch = true;
         } else if (res == 'conf_join') {
-            window.location.href = '/?room=' + roomCode.val; // put in text box
+            window.location.href = '/?r=' + roomCode.val; // put in text box
         } else if (res == 'join') {
             time.val = new Date().getTime();
             isWatch = false;

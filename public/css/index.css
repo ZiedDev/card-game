@@ -1,0 +1,71 @@
+body {
+    display: grid;
+    place-items: center;
+}
+
+.page-container {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    width: 50rem;
+    height: 20rem;
+    gap: 1rem;
+}
+
+.user-image {
+    grid-row: 2 span;
+    width: 13rem;
+    height: 13rem;
+}
+
+.nickname-label {
+    color: var(--font-alt);
+    grid-column: 2 span;
+    justify-self: start;
+    align-self: end;
+    font-size: 36pt;
+    font-weight: 900;
+    position: relative;
+}
+
+.nickname-label::after {
+    content: '';
+    position: absolute;
+    bottom: calc(-7.5rem + 16pt);
+    left: 3rem;
+    height: 4pt;
+    width: 30rem;
+    background-color: var(--gray);
+    border-radius: 1rem;
+}
+
+.nickname-input {
+    font-weight: 800;
+    font-size: 24pt;
+    grid-column: 2 span;
+    padding: 0.5rem 3rem;
+    border-radius: 5rem;
+    border: 0;
+    outline: 0;
+}
+
+.play-button {
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 24pt;
+    grid-column: 3 span;
+    background-color: var(--accent-green);
+    border-radius: 5rem;
+    margin-top: 2rem;
+    height: 5.875rem;
+    width: 15rem;
+    margin: 2rem auto 0 auto;
+    border: 0;
+    outline: 0;
+    transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
+}
+
+.play-button:active {
+    background-color: var(--accent-green-darker);
+    border-top: inset var(--gray) 0.5rem;
+}

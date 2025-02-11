@@ -1,0 +1,9 @@
+h1 {
+    font-weight: 900;
+    font-size: 36pt;
+}
+
+h1,
+h2 {
+    color: var(--font-alt);
+}
