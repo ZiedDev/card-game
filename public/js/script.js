@@ -30,10 +30,11 @@ class StoredValue {
 
 let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
+let userPfp = new StoredValue('userPfp', '0');
 let roomCode = new StoredValue('roomCode', '');
 let time = new StoredValue('time', '');
 
-console.log(userId, userName, roomCode, time);
+console.log(userId, userName, userPfp, roomCode, time);
 
 function setName() {
     userId.val = Math.floor(Math.random() * 1000000);

@@ -12,10 +12,32 @@ body {
     gap: 1rem;
 }
 
-.user-image {
+.user-image-container {
+    position: relative;
     grid-row: 2 span;
     width: 13rem;
     height: 13rem;
+}
+
+.user-image {
+    width: 13rem;
+    height: 13rem;
+    transform: scale(1.6367352185);
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+
+#user-image-reload {
+    position: absolute;
+    bottom: -0.5rem;
+    right: 1.2rem;
+    background-color: white;
+    border-radius: 50%;
+    padding: 0.2rem;
+    cursor: pointer;
 }
 
 .nickname-label {
