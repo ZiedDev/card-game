@@ -9,11 +9,15 @@ if (userId.val == '' || userName.val == '') {
 fetch(window.location.pathname, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: userId.val, confName: urlParams.get('c') }),
+    body: JSON.stringify({
+        userId: userId.val,
+        confName: urlParams.get('c'),
+        time: time.val,
+    }),
 }).then(response => {
     response.json().then(res => {
         console.log(res);
-        if (res == 'false') {
+        if (res == 'watch' || res == 'late+watch') {
             isWatch = true;
         } else if (res == 'conf_join') {
             window.location.href = '/?r=' + roomCode.val; // put in text box
@@ -21,13 +25,8 @@ fetch(window.location.pathname, {
             time.val = new Date().getTime();
             isWatch = false;
         } else if (res == 'rejoin') {
-            const newTime = new Date().getTime();
-            if (newTime - time.val < 2 * 60 * 1000) {
-                time.val = newTime;
-                isWatch = false;
-            } else {
-                isWatch = true;
-            }
+            time.val = new Date().getTime();
+            isWatch = false;
         }
     })
 }).catch(err => {
@@ -43,9 +42,19 @@ let socket = io({
 
 if (isWatch) {
     // implement watching
+    console.log('watch mode');
 } else {
     // implement normal
+    socket.on('update data', data => {
+        Object.entries(data).forEach(([property, value]) => {
+            socket.data[property] = value;
+        });
+        console.log('updated data', socket.data);
+    });
+
     socket.emit('join room', roomCode.val);
+
+
     socket.data = {
         userId: userId.val,
         userName: userName.val,

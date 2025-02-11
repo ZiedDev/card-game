@@ -27,6 +27,7 @@ playButton.addEventListener('click', e => {
     }
 })
 
+nicknameInput.value = userName.val;
 userImage.src = `/assets/pfps/${userPfp.val}.svg`;
 
 userImageReload.addEventListener('click', e => {

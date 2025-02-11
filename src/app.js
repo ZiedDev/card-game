@@ -3,6 +3,7 @@ require('dotenv').config();
 const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+const rejoinTLE = process.env.rejoinTLE = process.env.rejoinTLE || (2 * 60 * 1000);// 2min
 
 // library imports
 const express = require('express');
@@ -66,6 +67,7 @@ app.post('/room/:roomId', (req, res) => {
     const roomId = req.params.roomId
     const userId = req.body.userId
     const confName = req.body.confName
+    const time = req.body.time
 
     if (!rooms.has(roomId)) { // redundant
         res.send('"false"');
@@ -73,11 +75,17 @@ app.post('/room/:roomId', (req, res) => {
     };
     const roomData = roomsData.get(roomId);
     if (roomData.users.has(userId)) {
-        res.send('"rejoin"');
+        const newTime = new Date().getTime();
+        if (newTime - time < rejoinTLE) {
+            res.send('"rejoin"');
+        } else {
+            roomsData.get(roomId).users.delete(userId);
+            res.send('"late+watch"');
+        }
         return;
     }
     if (roomData.started) {
-        res.send('"false"');
+        res.send('"watch"');
         return;
     }
     if (confName) {
@@ -120,18 +128,15 @@ io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
 
     socket.on('disconnecting', () => {
+        // thinking abt it
     });
     socket.on('disconnect', () => {
         console.log(`user [${socket.id}] disconnected`);
     });
 
-    socket.on('print', () => {
-        console.log(io.sockets.adapter.rooms);
-    })
-
-    // non boilerplate stuff
     socket.on('join room', roomCode => {
         socket.join(roomCode);
+        io.to(roomCode).emit('update data', { users: Array.from(roomsData.get(roomCode).users) })
     })
 });
 
