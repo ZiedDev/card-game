@@ -48,6 +48,10 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
+app.post('/request-room-ejs', (req, res) => {
+    res.render(req.body.filename);
+});
+
 app.post('/createRoom', (req, res) => {
     let roomCode = generateRandomString(20);
     while (rooms.has(roomCode)) {

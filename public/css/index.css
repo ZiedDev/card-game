@@ -73,7 +73,7 @@ body {
 
 .play-button {
     cursor: pointer;
-    font-weight: 800;
+    font-weight: 900;
     font-size: 24pt;
     grid-column: 3 span;
     background-color: var(--accent-green);

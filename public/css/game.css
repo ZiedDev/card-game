@@ -1,0 +1,19 @@
+.your-cards {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+    display: grid;
+    gap: 1rem;
+    grid-auto-flow: column;
+    width: 80vw;
+}
+
+.card {
+    background-color: var(--font-alt);
+    /* width: 5rem; */
+    aspect-ratio: 2 / 3;
+}
+
+.card-scrolling {}

@@ -30,10 +30,15 @@ async function getPlayResponse() {
 let socket;
 let currentRoomUsers = [];
 let initialRoomJoin = true;
-const playersList = document.getElementById('players-list');
 const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
 (async () => {
+    // load DOM Content
+    await loadEJS('partials/room-content', html => {
+        document.getElementById('page-container').innerHTML = html
+    });
+
+    const playersList = document.getElementById('players-list');
 
     const isNotWatch = await getPlayResponse();
     if (isNotWatch != null) {
@@ -55,7 +60,6 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         socket.on('update usersData', data => {
             socket.roomData = data;
-            console.log(data);
 
             if (initialRoomJoin) {
                 Object.values(socket.roomData.usersData).forEach(userData => {
@@ -65,7 +69,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                         <h2>${escapeHtml(userData.userName)}</h2>
                     </div>`;
 
-                    playersList.appendChild(htmlToElement(playerDOM));
+                    document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
                     gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
                 });
             }
@@ -75,7 +79,6 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         socket.on('update usersData changeonly', data => {
             if (!initialRoomJoin) {
-                console.log('changeonly', data);
                 const [userData, connecting] = data;
 
                 if (connecting) {
@@ -85,14 +88,14 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                         <h2>${escapeHtml(userData.userName)}</h2>
                     </div>`
 
-                    playersList.appendChild(htmlToElement(playerDOM));
+                    document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
                     const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
 
                 } else {
                     const childToRemove = document.getElementById(`${userData.userId}-player-list`)
                     gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
                     setTimeout(() => {
-                        playersList.removeChild(childToRemove)
+                        document.getElementById('players-list').removeChild(childToRemove)
                     }, 1000);
                 }
             }

@@ -78,3 +78,17 @@ function encodeBase64(string) {
     const base64 = btoa(string);
     return base64.replace(/[^a-zA-Z0-9]/g, '');
 }
+
+async function loadEJS(filename, callback = (html) => { }) {
+    await fetch('/request-room-ejs', {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename,
+        }),
+    }).then(response => {
+        response.text().then(html => {
+            callback(html);
+        });
+    });
+}
