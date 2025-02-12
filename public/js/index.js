@@ -13,7 +13,7 @@ playButton.addEventListener('click', e => {
     let nickname = nicknameInput.value
     if (nickname) {
         if (nickname != userName.val) {
-            userId.val = btoa(`${nickname + Math.floor(Math.random() * 10000000)}`);
+            userId.val = encodeBase64(`${nickname + Math.floor(Math.random() * 10000000)}`);
         }
         userName.val = nickname;
 

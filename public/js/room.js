@@ -31,6 +31,7 @@ let socket;
 let currentRoomUsers = [];
 let initialRoomJoin = true;
 const playersList = document.getElementById('players-list');
+const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
 (async () => {
 
@@ -54,16 +55,18 @@ const playersList = document.getElementById('players-list');
 
         socket.on('update usersData', data => {
             socket.roomData = data;
+            console.log(data);
 
             if (initialRoomJoin) {
                 Object.values(socket.roomData.usersData).forEach(userData => {
                     const playerDOM = `
-                    <div class="player" id="${userData.userId}-player-list">
+                    <div class="player ${userData.userId}-player-list" id="${userData.userId}-player-list">
                         <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                         <h2>${escapeHtml(userData.userName)}</h2>
                     </div>`;
 
                     playersList.appendChild(htmlToElement(playerDOM));
+                    gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
                 });
             }
 
@@ -77,15 +80,20 @@ const playersList = document.getElementById('players-list');
 
                 if (connecting) {
                     const playerDOM = `
-                    <div class="player" id="${userData.userId}-player-list">
+                    <div class="player ${userData.userId}-player-list" id="${userData.userId}-player-list">
                         <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                         <h2>${escapeHtml(userData.userName)}</h2>
                     </div>`
 
                     playersList.appendChild(htmlToElement(playerDOM));
+                    const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
+
                 } else {
                     const childToRemove = document.getElementById(`${userData.userId}-player-list`)
-                    playersList.removeChild(childToRemove)
+                    gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
+                    setTimeout(() => {
+                        playersList.removeChild(childToRemove)
+                    }, 1000);
                 }
             }
         });

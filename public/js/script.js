@@ -73,3 +73,8 @@ function escapeHtml(unsafe) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+function encodeBase64(string) {
+    const base64 = btoa(string);
+    return base64.replace(/[^a-zA-Z0-9]/g, '');
+}
