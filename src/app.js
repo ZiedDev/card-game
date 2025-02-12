@@ -48,7 +48,7 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
-app.post('/request-room-ejs', (req, res) => {
+app.put('/request-room-ejs', (req, res) => {
     res.render(req.body.filename);
 });
 

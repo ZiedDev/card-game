@@ -101,6 +101,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             }
         });
 
+        document.getElementById('start-button').addEventListener('click', async e => {
+            await loadEJS('partials/game-content', html => {
+                document.getElementById('page-container').innerHTML = html
+            });
+        });
+
     } else {
         console.log('watch mode');
     }

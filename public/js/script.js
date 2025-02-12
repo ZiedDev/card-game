@@ -81,7 +81,7 @@ function encodeBase64(string) {
 
 async function loadEJS(filename, callback = (html) => { }) {
     await fetch('/request-room-ejs', {
-        method: "POST",
+        method: "PUT",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             filename,
