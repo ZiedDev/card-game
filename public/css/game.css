@@ -3,6 +3,8 @@ body {
 }
 
 .your-cards {
+    overflow: hidden;
+
     position: absolute;
     left: 0;
     right: 0;
@@ -18,10 +20,54 @@ body {
     align-items: center;
 }
 
+.card-container {
+    transform-style: preserve-3d;
+    perspective: 800px;
+    perspective-origin: center;
+}
+
 .card {
+    --ry: 5deg;
+    --rx: 30deg;
+    --rz: -5deg;
+    transform: rotateX(var(--ry)) rotateY(var(--rx)) rotateZ(var(--rz));
     background-color: var(--font-alt);
     height: 10rem;
     aspect-ratio: 2 / 3;
+    animation: identifier 10000ms ease infinite forwards;
+
+}
+
+@keyframes identifier {
+    from {
+        --ry: 0deg;
+        --rx: 0deg;
+        --rz: 0deg;
+    }
+
+    to {
+        --ry: 360deg;
+        --rx: 360deg;
+        --rz: 360deg;
+    }
+}
+
+@property --ry {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --rx {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --rz {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
 }
 
 .card-scrolling {
