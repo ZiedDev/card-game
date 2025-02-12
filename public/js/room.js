@@ -35,10 +35,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 (async () => {
     // load DOM Content
     await loadEJS('partials/room-content', html => {
-        document.getElementById('page-container').innerHTML = html
-    });
-
-    const playersList = document.getElementById('players-list');
+        document.getElementById('page-container').innerHTML = ''
+        document.getElementById('page-container').appendChild(htmlToElement(html))
+    })
 
     const isNotWatch = await getPlayResponse();
     if (isNotWatch != null) {
@@ -103,7 +102,13 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         document.getElementById('start-button').addEventListener('click', async e => {
             await loadEJS('partials/game-content', html => {
-                document.getElementById('page-container').innerHTML = html
+                document.getElementById('page-container').innerHTML = ''
+                document.getElementById('page-container').appendChild(htmlToElement(html))
+
+                // necessary for script to run
+                const script = document.createElement('script');
+                script.src = '/js/game.js'
+                document.getElementById('page-container').appendChild(script)
             });
         });
 

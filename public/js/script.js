@@ -62,7 +62,7 @@ async function createRoom() {
 function htmlToElement(html) {
     const template = document.createElement('template');
     template.innerHTML = html.trim();
-    return template.content.firstChild;
+    return template.content;
 }
 
 function escapeHtml(unsafe) {
@@ -91,4 +91,21 @@ async function loadEJS(filename, callback = (html) => { }) {
             callback(html);
         });
     });
+}
+
+function rangeLerp(
+    inputValue,
+    inputRangeStart = 0,
+    InputRangeEnd = 1,
+    OutputRangeStart,
+    OutputRangeEnd,
+    capInput = false,
+    decimalPlaces = 1) {
+    let t = inputValue;
+    if (capInput) {
+        t = Math.max(Math.min(t, InputRangeEnd), inputRangeStart);
+    }
+    let res = OutputRangeStart * (InputRangeEnd - t) + OutputRangeEnd * (t - inputRangeStart);
+    res /= (InputRangeEnd - inputRangeStart);
+    return res.toFixed(decimalPlaces);
 }
