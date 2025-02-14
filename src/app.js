@@ -62,7 +62,8 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
-        users: new Set([req.body.userId]),
+        users: new Set(),
+        rejoinableUsers: new Set([req.body.userId]),
         usersData: {},
         gamePrefrences: {},
     });
@@ -81,6 +82,12 @@ app.post('/room/:roomId', (req, res) => {
     };
     const roomData = roomsData.get(roomId);
     if (roomData.users.has(userId)) {
+        res.send('"duplicate"');
+        return;
+    }
+    if (roomData.rejoinableUsers.has(userId)) {
+        roomsData.get(roomId).rejoinableUsers.delete(userId);
+        roomsData.get(roomId).users.add(userId);
         res.send('"rejoin"');
         return;
     }
@@ -132,8 +139,10 @@ io.on('connection', socket => {
         let socketData = socketsData.get(socket.id);
         if (socketData.hasOwnProperty('roomCode')) { // redundant
             let roomCode = socketData.roomCode;
-            if (!roomsData.get(roomCode).started) {
-                roomsData.get(roomCode).users.delete(socketData.userId);
+            roomsData.get(roomCode).users.delete(socketData.userId);
+            if (roomsData.get(roomCode).started) {
+                roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
+            } else {
                 delete roomsData.get(roomCode).usersData[socketData.userId];
                 io.to(roomCode).except(socket.id).emit('update userList', [socketData, false]);
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
@@ -153,7 +162,7 @@ io.on('connection', socket => {
 
     socket.on('join room', data => {
         socket.join(data.roomCode);
-        Object.entries(data).forEach(([property, value]) => {
+        Object.entries(data).forEach(([property, value]) => { // semi-unnecessary
             socketsData.get(socket.id)[property] = value;
         });
         roomsData.get(data.roomCode).usersData[data.userId] = data;
@@ -162,6 +171,8 @@ io.on('connection', socket => {
         }
         socket.emit('init roomData', roomsData.get(data.roomCode));
         io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
+
+        if (roomsData.get(data.roomCode).started) socket.emit('start game');
     });
 
     socket.on('start game', () => {
@@ -176,12 +187,12 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePrefrences', data);
     });
 
-    socket.on('test', () => {
-        console.log('TEST:');
-        console.log('rooms:', rooms);
-        console.log('roomsData:', roomsData);
-        console.log('socketsData:', socketsData);
-    });
+    // socket.on('test', () => {
+    //     console.log('TEST:');
+    //     console.log('rooms:', rooms);
+    //     console.log('roomsData:', roomsData);
+    //     console.log('socketsData:', socketsData);
+    // });
 });
 
 io.of("/").adapter.on("create-room", (room) => {

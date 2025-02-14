@@ -17,7 +17,7 @@ async function getPlayResponse() {
     const res = await response.json();
 
     console.log('res-type', res);
-    if (res == 'watch') {
+    if (res == 'watch' || res == 'duplicate') {
         return false;
     } else if (res == 'conf_join') {
         window.location.href = '/?r=' + roomCode.val;
