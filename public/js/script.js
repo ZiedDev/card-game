@@ -15,7 +15,7 @@ class StoredValue {
         }
     }
     update() {
-        localStorage.setItem(this._name, this._value);
+        localStorage.setItem(this._name, JSON.stringify(this._value));
         this._callback(this);
     }
     get val() {
@@ -23,9 +23,19 @@ class StoredValue {
     }
     set val(value) {
         this._value = value;
-        localStorage.setItem(this._name, JSON.stringify(this._value));
         this.update();
     }
+}
+
+const gamePreferenceOptions = {
+    isSigma: {
+        options: ['on', 'off'],
+        default: 'off',
+    },
+    ligmaType: {
+        options: ['val1', 'val2', 'val3'],
+        default: 'val1',
+    },
 }
 
 let userId = new StoredValue('userId', '');
@@ -33,12 +43,23 @@ let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
 
-console.log(userId, userName, userPfp, roomCode);
+let userGamePrefrences = new StoredValue(
+    'userGamePrefrences',
+    Object.keys(gamePreferenceOptions).reduce((acc, key) => {
+        acc[key] = gamePreferenceOptions[key].default;
+        return acc;
+    }, {})
+);
+
+
+console.log(userId, userName, userPfp, roomCode, userGamePrefrences);
 
 function _resetUserStorage() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
+    localStorage.removeItem('userPfp');
     localStorage.removeItem('roomCode');
+    localStorage.removeItem('userGamePrefrences');
 }
 
 async function createRoom() {

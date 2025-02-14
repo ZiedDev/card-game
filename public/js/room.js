@@ -55,6 +55,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             userName: userName.val,
             userPfp: userPfp.val,
             roomCode: roomCode.val,
+            userGamePrefrences: userGamePrefrences.val,
         });
 
         socket.on('update usersData', data => {
@@ -71,6 +72,46 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                     document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
                     gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
                 });
+
+                const isOwner = socket.roomData.owner == userId.val;
+                if (isOwner) {
+                    document.getElementById('start-button').addEventListener('click', e => {
+                        socket.emit('start game');
+                    });
+
+                    Object.entries(userGamePrefrences.val).forEach(([key, value]) => {
+                        const selectDOM = `
+                        <div class="select-container">
+                            <h2>${key}</h2>
+                            <select name="${key}-option" id="${key}-option">
+                                ${gamePreferenceOptions[key].options.map(option =>
+                            `<option value="${option}">${option}</option>`
+                        ).join('\n')}
+                            </select>
+                            <label class="arrow" for="${key}-option">▼</label>
+                        </div>`;
+                        document.getElementById('settings').appendChild(htmlToElement(selectDOM));
+                        document.getElementById(`${key}-option`).value = value;
+                    });
+
+
+                } else {
+                    document.getElementById('start-button').style.backgroundColor = '#000000';
+                    document.getElementById('start-button').disabled = true;
+
+                    Object.entries(userGamePrefrences.val).forEach(([key, value]) => {
+                        const selectDOM = `
+                        <div class="select-container">
+                            <h2>${key}</h2>
+                            <select name="${key}-option" id="${key}-option" disabled>
+                                <option value="${value}">${value}</option>
+                            </select>
+                            <label class="arrow" for="${key}-option">▼</label>
+                        </div>`;
+                        document.getElementById('settings').appendChild(htmlToElement(selectDOM));
+                        document.getElementById(`${key}-option`).value = value
+                    });
+                }
             }
 
             initialRoomJoin = false
@@ -100,7 +141,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             }
         });
 
-        document.getElementById('start-button').addEventListener('click', async e => {
+        socket.on('start game', async () => {
             await loadEJS('partials/game-content', html => {
                 document.getElementById('page-container').innerHTML = ''
                 document.getElementById('page-container').appendChild(htmlToElement(html))

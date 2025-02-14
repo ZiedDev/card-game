@@ -155,6 +155,12 @@ io.on('connection', socket => {
         io.to(data.roomCode).except(socket.id).emit('update usersData changeonly', [data, true]);
     });
 
+    socket.on('start game', () => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        roomsData.get(roomCode).started = true;
+        io.to(roomCode).emit('start game');
+    });
+
     socket.on('test', () => {
         console.log('TEST:');
         console.log('rooms:', rooms);
