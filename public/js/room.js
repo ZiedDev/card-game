@@ -73,7 +73,11 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 });
 
                 if (socket.roomData.owner == userId.val) {
-                    console.log('owner');
+                    document.getElementById('start-button').addEventListener('click', e => {
+                        socket.emit('start game');
+                    });
+                } else {
+                    document.getElementById('start-button').style.backgroundColor = '#000000';
                 }
             }
 
@@ -104,7 +108,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             }
         });
 
-        document.getElementById('start-button').addEventListener('click', async e => {
+        socket.on('start game', async () => {
             await loadEJS('partials/game-content', html => {
                 document.getElementById('page-container').innerHTML = ''
                 document.getElementById('page-container').appendChild(htmlToElement(html))
