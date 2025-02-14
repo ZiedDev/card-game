@@ -48,6 +48,10 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
+app.put('/request-room-ejs', (req, res) => {
+    res.render(req.body.filename);
+});
+
 app.post('/createRoom', (req, res) => {
     let roomCode = generateRandomString(20);
     while (rooms.has(roomCode)) {
@@ -59,7 +63,7 @@ app.post('/createRoom', (req, res) => {
         started: false,
         owner: req.body.userId,
         users: new Set([req.body.userId]),
-        userData: {},
+        usersData: {},
     });
 
     res.send(JSON.stringify(roomCode));
@@ -129,8 +133,9 @@ io.on('connection', socket => {
             let roomCode = socketData.roomCode;
             if (!roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).users.delete(socketData.userId);
-                delete roomsData.get(roomCode).userData[socketData.userId];
-                io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
+                delete roomsData.get(roomCode).usersData[socketData.userId];
+                io.to(roomCode).emit('update usersData', roomsData.get(roomCode));
+                io.to(roomCode).emit('update usersData changeonly', [socketData, false]);
             }
         }
     });
@@ -145,8 +150,9 @@ io.on('connection', socket => {
         Object.entries(data).forEach(([property, value]) => {
             socketsData.get(socket.id)[property] = value;
         });
-        roomsData.get(data.roomCode).userData[data.userId] = data;
+        roomsData.get(data.roomCode).usersData[data.userId] = data;
         io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
+        io.to(data.roomCode).except(socket.id).emit('update usersData changeonly', [data, true]);
     });
 
     socket.on('test', () => {

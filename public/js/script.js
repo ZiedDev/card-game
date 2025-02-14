@@ -58,3 +58,54 @@ async function createRoom() {
         console.info(err + " url: " + url);
     });
 }
+
+function htmlToElement(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content;
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function encodeBase64(string) {
+    const base64 = btoa(string);
+    return base64.replace(/[^a-zA-Z0-9]/g, '');
+}
+
+async function loadEJS(filename, callback = (html) => { }) {
+    await fetch('/request-room-ejs', {
+        method: "PUT",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename,
+        }),
+    }).then(response => {
+        response.text().then(html => {
+            callback(html);
+        });
+    });
+}
+
+function rangeLerp(
+    inputValue,
+    inputRangeStart = 0,
+    InputRangeEnd = 1,
+    OutputRangeStart,
+    OutputRangeEnd,
+    capInput = false,
+    decimalPlaces = 1) {
+    let t = inputValue;
+    if (capInput) {
+        t = Math.max(Math.min(t, InputRangeEnd), inputRangeStart);
+    }
+    let res = OutputRangeStart * (InputRangeEnd - t) + OutputRangeEnd * (t - inputRangeStart);
+    res /= (InputRangeEnd - inputRangeStart);
+    return res.toFixed(decimalPlaces);
+}

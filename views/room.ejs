@@ -5,156 +5,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js" defer></script>
   <script src="/js/script.js" defer></script>
   <script src="/js/room.js" defer></script>
   <link rel="stylesheet" href="/css/default.css">
-  <link rel="stylesheet" href="/css/room.css">
   <title>Card Game</title>
 </head>
 
 <body>
-  <div class="page-container">
-    <div class="players scroll" id="players">
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-
-      <div class="player">
-        <img class="user-image" src="https://cdn.discordapp.com/attachments/1064471000932155434/1338613978636619806/profile-placeholder.png?ex=67abb8ea&is=67aa676a&hm=f939d3c02d447fb9b653c1c2f2952ca11954984ba237d78334d68fe078b52c38&" alt="">
-        <h2>name</h2>
-      </div>
-    </div>
-    <div class="room-settings">
-      <h1>Room Title</h1>
-
-      <div class="settings scroll">
-        <div class="select-container">
-          <h2>Option 1</h2>
-          <select name="option01" id="option01">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option01">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 2</h2>
-          <select name="option02" id="option02">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 3</h2>
-          <select name="option03" id="option03">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 4</h2>
-          <select name="option04" id="option04">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 5</h2>
-          <select name="option05" id="option05">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 6</h2>
-          <select name="option06" id="option06">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 7</h2>
-          <select name="option07" id="option07">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-
-        <div class="select-container">
-          <h2>Option 8</h2>
-          <select name="option08" id="option08">
-            <option value="setting-01">setting-01</option>
-            <option value="setting-02">setting-02</option>
-            <option value="setting-03">setting-03</option>
-            <option value="setting-04">setting-04</option>
-          </select>
-          <label class="arrow" for="option02">▼</label>
-        </div>
-      </div>
-
-      <button class="start-button" id="start-button">Start</button>
-    </div>
+  <div class="page-container" id="page-container">
   </div>
 </body>
 
