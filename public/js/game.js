@@ -58,5 +58,5 @@ function ligma(s, h) {
 
 ligma(
     cardScrollingDOM.getBoundingClientRect().width - 200,
-    cardScrollingDOM.getBoundingClientRect().height - 200
+    cardScrollingDOM.getBoundingClientRect().height
 )

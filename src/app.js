@@ -134,8 +134,7 @@ io.on('connection', socket => {
             if (!roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).users.delete(socketData.userId);
                 delete roomsData.get(roomCode).usersData[socketData.userId];
-                io.to(roomCode).emit('update usersData', roomsData.get(roomCode));
-                io.to(roomCode).emit('update usersData changeonly', [socketData, false]);
+                io.to(roomCode).except(socket.id).emit('update userList', [socketData, false]);
             }
         }
     });
@@ -151,8 +150,8 @@ io.on('connection', socket => {
             socketsData.get(socket.id)[property] = value;
         });
         roomsData.get(data.roomCode).usersData[data.userId] = data;
-        io.to(data.roomCode).emit('update usersData', roomsData.get(data.roomCode));
-        io.to(data.roomCode).except(socket.id).emit('update usersData changeonly', [data, true]);
+        socket.emit('init roomData', roomsData.get(data.roomCode));
+        io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
     });
 
     socket.on('start game', () => {
