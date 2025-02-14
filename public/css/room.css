@@ -31,6 +31,13 @@ h1 {
     align-items: center;
 }
 
+.player.owner h2::after {
+    content: '👑';
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
 .player h2 {
     overflow: hidden;
     white-space: nowrap;

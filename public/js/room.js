@@ -61,8 +61,6 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
     });
 
     socket.on('init roomData', data => {
-        console.log('init roomData');
-        
         socket.roomData = data;
         socket.isOwner = socket.roomData.owner == userId.val;
 
@@ -70,7 +68,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         Object.values(socket.roomData.usersData).forEach(userData => {
             const playerDOM = `
-            <div class="player ${userData.userId}-player-list" id="${userData.userId}-player-list">
+            <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
                 <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                 <h2>${escapeHtml(userData.userName)}</h2>
             </div>`;
@@ -111,7 +109,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 const selectDOM = `
                     <div class="select-container">
                         <h2>${key}</h2>
-                        <select name="${key}-option" id="${key}-option" disabled>
+                        <select name="${key}-option" id="${key}-option" disabled style="padding: 0 0.75rem;">
                             <option value="${value}">${value}</option>
                         </select>
                     </div>`;
@@ -126,7 +124,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             const selectDOM = `
                 <div class="select-container">
                     <h2>${key}</h2>
-                    <select name="${key}-option" id="${key}-option" disabled>
+                    <select name="${key}-option" id="${key}-option" disabled style="padding: 0 0.75rem;">
                         <option value="${value}">${value}</option>
                     </select>
                 </div>`;
@@ -139,11 +137,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         if (connecting) {
             socket.roomData.usersData[userData.userId] = userData;
-            console.log('update userList');
-            
-            console.log(socket.roomData);
             const playerDOM = `
-                <div class="player ${userData.userId}-player-list" id="${userData.userId}-player-list">
+                <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
                     <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                     <h2>${escapeHtml(userData.userName)}</h2>
                 </div>`;
