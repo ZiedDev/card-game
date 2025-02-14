@@ -9,9 +9,28 @@ if (urlParams.get('r')) {
     playButton.textContent = 'Join';
 }
 
-playButton.addEventListener('click', e => {
+async function getUsernameValid(name, room) {
+    const response = await fetch('/request-username-valid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userName: name,
+            roomCode: room,
+        }),
+    });
+    const res = await response.json();
+
+    return JSON.parse(res);
+}
+
+playButton.addEventListener('click', async e => {
     let nickname = nicknameInput.value
     if (nickname) {
+        if (urlParams.get('r') && !(await getUsernameValid(nickname, urlParams.get('r')))) {
+            alert('Nickname already taken in room');
+            return;
+        }
+
         if (nickname != userName.val) {
             userId.val = encodeBase64(`${nickname + Math.floor(Math.random() * 10000000)}`);
         }
@@ -23,7 +42,7 @@ playButton.addEventListener('click', e => {
             createRoom();
         }
     } else {
-
+        alert('Nickname cant be empty');
     }
 })
 

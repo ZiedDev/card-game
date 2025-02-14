@@ -52,6 +52,19 @@ app.put('/request-room-ejs', (req, res) => {
     res.render(req.body.filename);
 });
 
+app.post('/request-username-valid', (req, res) => {
+    const userName = req.body.userName;
+    const roomCode = req.body.roomCode;
+
+    const usersData = roomsData.get(roomCode).usersData;
+    const userNameSet = Object.keys(usersData).reduce((acc, key) => {
+        acc.add(usersData[key].userName);
+        return acc;
+    }, new Set());
+
+    res.send(JSON.stringify(!userNameSet.has(userName)));
+});
+
 app.post('/createRoom', (req, res) => {
     let roomCode = generateRandomString(20);
     while (rooms.has(roomCode)) {
