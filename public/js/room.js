@@ -93,24 +93,41 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                         </div>`;
                 document.getElementById('settings').appendChild(htmlToElement(selectDOM));
                 document.getElementById(`${key}-option`).value = value;
+                document.getElementById(`${key}-option`).addEventListener('change', e => {
+                    userGamePrefrences.val[key] = document.getElementById(`${key}-option`).value;
+                    userGamePrefrences.update();
+                    socket.emit('update gamePrefrences', userGamePrefrences.val);
+                });
             });
         } else {
             document.getElementById('start-button').style.backgroundColor = '#000000';
             document.getElementById('start-button').disabled = true;
 
-            Object.entries(userGamePrefrences.val).forEach(([key, value]) => {
+            Object.entries(socket.roomData.gamePrefrences).forEach(([key, value]) => {
                 const selectDOM = `
                     <div class="select-container">
                         <h2>${key}</h2>
                         <select name="${key}-option" id="${key}-option" disabled>
                             <option value="${value}">${value}</option>
                         </select>
-                        <label class="arrow" for="${key}-option">▼</label>
                     </div>`;
                 document.getElementById('settings').appendChild(htmlToElement(selectDOM));
-                document.getElementById(`${key}-option`).value = value
             });
         }
+    });
+
+    socket.on('update gamePrefrences', data => {
+        document.getElementById('settings').innerHTML = '';
+        Object.entries(data).forEach(([key, value]) => {
+            const selectDOM = `
+                <div class="select-container">
+                    <h2>${key}</h2>
+                    <select name="${key}-option" id="${key}-option" disabled>
+                        <option value="${value}">${value}</option>
+                    </select>
+                </div>`;
+            document.getElementById('settings').appendChild(htmlToElement(selectDOM));
+        });
     });
 
     socket.on('update userList', data => {

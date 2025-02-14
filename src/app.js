@@ -64,6 +64,7 @@ app.post('/createRoom', (req, res) => {
         owner: req.body.userId,
         users: new Set([req.body.userId]),
         usersData: {},
+        gamePrefrences: {},
     });
 
     res.send(JSON.stringify(roomCode));
@@ -150,6 +151,9 @@ io.on('connection', socket => {
             socketsData.get(socket.id)[property] = value;
         });
         roomsData.get(data.roomCode).usersData[data.userId] = data;
+        if (roomsData.get(data.roomCode).owner == data.userId) {
+            roomsData.get(data.roomCode).gamePrefrences = data.userGamePrefrences;
+        }
         socket.emit('init roomData', roomsData.get(data.roomCode));
         io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
     });
@@ -158,6 +162,12 @@ io.on('connection', socket => {
         let roomCode = socketsData.get(socket.id).roomCode;
         roomsData.get(roomCode).started = true;
         io.to(roomCode).emit('start game');
+    });
+
+    socket.on('update gamePrefrences', data => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        roomsData.get(roomCode).gamePrefrences = data;
+        io.to(roomCode).except(socket.id).emit('update gamePrefrences', data);
     });
 
     socket.on('test', () => {
