@@ -52,13 +52,14 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         return;
     }
 
-    socket.emit('join room', {
+    socket.data = {
         userId: userId.val,
         userName: userName.val,
         userPfp: userPfp.val,
         roomCode: roomCode.val,
         userGamePrefrences: userGamePrefrences.val,
-    });
+    }
+    socket.emit('join room', socket.data);
 
     socket.on('init roomData', data => {
         socket.roomData = data;
@@ -66,9 +67,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
         document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
 
+        document.getElementById('players-list').innerHTML = '';
+        document.getElementById('settings').innerHTML = '';
+
         Object.values(socket.roomData.usersData).forEach(userData => {
             const playerDOM = `
-            <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
+            <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""} ${socket.data.userId == userData.userId ? "self" : ""}" id="${userData.userId}-player-list">
                 <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                 <h2>${escapeHtml(userData.userName)}</h2>
             </div>`;

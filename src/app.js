@@ -136,6 +136,12 @@ io.on('connection', socket => {
                 roomsData.get(roomCode).users.delete(socketData.userId);
                 delete roomsData.get(roomCode).usersData[socketData.userId];
                 io.to(roomCode).except(socket.id).emit('update userList', [socketData, false]);
+                const newOwnerId = roomsData.get(roomCode).users.values().next().value;
+                if (roomsData.get(roomCode).owner == socketData.userId && newOwnerId) {
+                    roomsData.get(roomCode).owner = newOwnerId;
+                    roomsData.get(roomCode).gamePrefrences = roomsData.get(roomCode).usersData[newOwnerId].userGamePrefrences;
+                    io.to(roomCode).emit('init roomData', roomsData.get(roomCode));
+                }
             }
         }
     });
