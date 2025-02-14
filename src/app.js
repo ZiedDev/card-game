@@ -130,7 +130,7 @@ io.on('connection', socket => {
 
     socket.on('disconnecting', () => {
         let socketData = socketsData.get(socket.id);
-        if (socketData.hasOwnProperty('roomCode')) {
+        if (socketData.hasOwnProperty('roomCode')) { // redundant
             let roomCode = socketData.roomCode;
             if (!roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).users.delete(socketData.userId);

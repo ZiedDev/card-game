@@ -16,7 +16,7 @@ async function getPlayResponse() {
     });
     const res = await response.json();
 
-    console.log('res type', res);
+    console.log('res-type', res);
     if (res == 'watch') {
         return false;
     } else if (res == 'conf_join') {
@@ -61,8 +61,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
     });
 
     socket.on('init roomData', data => {
+        console.log('init roomData');
+        
         socket.roomData = data;
         socket.isOwner = socket.roomData.owner == userId.val;
+
+        document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
 
         Object.values(socket.roomData.usersData).forEach(userData => {
             const playerDOM = `
@@ -134,6 +138,10 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         const [userData, connecting] = data;
 
         if (connecting) {
+            socket.roomData.usersData[userData.userId] = userData;
+            console.log('update userList');
+            
+            console.log(socket.roomData);
             const playerDOM = `
                 <div class="player ${userData.userId}-player-list" id="${userData.userId}-player-list">
                     <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
@@ -143,6 +151,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
 
         } else {
+            delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
             gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
             setTimeout(() => {
