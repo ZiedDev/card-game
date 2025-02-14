@@ -71,6 +71,10 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                     document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
                     gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
                 });
+
+                if (socket.roomData.owner == userId.val) {
+                    console.log('owner');
+                }
             }
 
             initialRoomJoin = false
