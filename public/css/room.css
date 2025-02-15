@@ -38,6 +38,19 @@ h1 {
     left: 0;
 }
 
+.player.self::before {
+    content: '';
+    position: absolute;
+    top: calc(50% - 5px);
+    scale: 0.6109723727436247;
+    border-radius: 100%;
+    left: 1rem;
+    box-shadow: 0px 0px 5px 20px #0ff;
+    width: 3rem;
+    height: 3rem;
+    transform: translateY(-50%);
+}
+
 .player h2 {
     overflow: hidden;
     white-space: nowrap;

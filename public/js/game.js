@@ -23,7 +23,8 @@ document.addEventListener('pointermove', e => {
             OutputRangeStart = -100,
             OutputRangeEnd = 100,
             capInput = false,
-            decimalPlaces = 1);
+            decimalPlaces = 1
+        );
 
         console.log(`deltaX: ${deltaX}, lerpedVal: ${lerpedVal}`);
     }

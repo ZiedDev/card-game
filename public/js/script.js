@@ -43,8 +43,8 @@ let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
 
-let userGamePrefrences = new StoredValue(
-    'userGamePrefrences',
+let userGamePreferences = new StoredValue(
+    'userGamePreferences',
     Object.keys(gamePreferenceOptions).reduce((acc, key) => {
         acc[key] = gamePreferenceOptions[key].default;
         return acc;
@@ -52,14 +52,14 @@ let userGamePrefrences = new StoredValue(
 );
 
 
-console.log(userId, userName, userPfp, roomCode, userGamePrefrences);
+console.log(userId, userName, userPfp, roomCode, userGamePreferences);
 
 function _resetUserStorage() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('userPfp');
     localStorage.removeItem('roomCode');
-    localStorage.removeItem('userGamePrefrences');
+    localStorage.removeItem('userGamePreferences');
 }
 
 async function createRoom() {
@@ -129,4 +129,22 @@ function rangeLerp(
     let res = OutputRangeStart * (InputRangeEnd - t) + OutputRangeEnd * (t - inputRangeStart);
     res /= (InputRangeEnd - inputRangeStart);
     return res.toFixed(decimalPlaces);
+}
+
+function stringifyWithSets(obj) {
+    return JSON.stringify(obj, (key, value) => {
+        if (value instanceof Set) {
+            return { type: 'Set', values: Array.from(value) };
+        }
+        return value;
+    });
+}
+
+function parseWithSets(str) {
+    return JSON.parse(str, (key, value) => {
+        if (value && value.type === 'Set') {
+            return new Set(value.values);
+        }
+        return value;
+    });
 }

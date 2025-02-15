@@ -9,7 +9,7 @@ const rejoinTLE = process.env.rejoinTLE = process.env.rejoinTLE || (2 * 60 * 100
 const express = require('express');
 
 // js imports
-const { generateRandomString } = require('./funcs');
+const { generateRandomString, stringifyWithSets, parseWithSets } = require('./funcs');
 
 // route imports
 
@@ -78,7 +78,7 @@ app.post('/createRoom', (req, res) => {
         users: new Set(),
         rejoinableUsers: new Set([req.body.userId]),
         usersData: {},
-        gamePrefrences: {},
+        gamePreferences: {},
     });
 
     res.send(JSON.stringify(roomCode));
@@ -161,8 +161,8 @@ io.on('connection', socket => {
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
                 if (roomsData.get(roomCode).owner == socketData.userId && newOwnerId) {
                     roomsData.get(roomCode).owner = newOwnerId;
-                    roomsData.get(roomCode).gamePrefrences = roomsData.get(roomCode).usersData[newOwnerId].userGamePrefrences;
-                    io.to(roomCode).emit('init roomData', roomsData.get(roomCode));
+                    roomsData.get(roomCode).gamePreferences = roomsData.get(roomCode).usersData[newOwnerId].userGamePreferences;
+                    io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
                 }
             }
         }
@@ -180,9 +180,9 @@ io.on('connection', socket => {
         });
         roomsData.get(data.roomCode).usersData[data.userId] = data;
         if (roomsData.get(data.roomCode).owner == data.userId) {
-            roomsData.get(data.roomCode).gamePrefrences = data.userGamePrefrences;
+            roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
         }
-        socket.emit('init roomData', roomsData.get(data.roomCode));
+        socket.emit('init roomData', stringifyWithSets(roomsData.get(data.roomCode)));
         io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
 
         if (roomsData.get(data.roomCode).started) socket.emit('start game');
@@ -194,10 +194,10 @@ io.on('connection', socket => {
         io.to(roomCode).emit('start game');
     });
 
-    socket.on('update gamePrefrences', data => {
+    socket.on('update gamePreferences', data => {
         let roomCode = socketsData.get(socket.id).roomCode;
-        roomsData.get(roomCode).gamePrefrences = data;
-        io.to(roomCode).except(socket.id).emit('update gamePrefrences', data);
+        roomsData.get(roomCode).gamePreferences = data;
+        io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
     // socket.on('test', () => {
