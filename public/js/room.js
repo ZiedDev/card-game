@@ -57,12 +57,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         userName: userName.val,
         userPfp: userPfp.val,
         roomCode: roomCode.val,
-        userGamePrefrences: userGamePrefrences.val,
+        userGamePreferences: userGamePreferences.val,
     }
     socket.emit('join room', socket.data);
 
     socket.on('init roomData', data => {
-        socket.roomData = data;
+        socket.roomData = parseWithSets(data);
         socket.isOwner = socket.roomData.owner == userId.val;
 
         document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
@@ -86,7 +86,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 socket.emit('start game');
             });
 
-            Object.entries(userGamePrefrences.val).forEach(([key, value]) => {
+            Object.entries(userGamePreferences.val).forEach(([key, value]) => {
                 const selectDOM = `
                         <div class="select-container">
                             <h2>${key}</h2>
@@ -100,16 +100,16 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 document.getElementById('settings').appendChild(htmlToElement(selectDOM));
                 document.getElementById(`${key}-option`).value = value;
                 document.getElementById(`${key}-option`).addEventListener('change', e => {
-                    userGamePrefrences.val[key] = document.getElementById(`${key}-option`).value;
-                    userGamePrefrences.update();
-                    socket.emit('update gamePrefrences', userGamePrefrences.val);
+                    userGamePreferences.val[key] = document.getElementById(`${key}-option`).value;
+                    userGamePreferences.update();
+                    socket.emit('update gamePreferences', userGamePreferences.val);
                 });
             });
         } else {
             document.getElementById('start-button').style.backgroundColor = '#000000';
             document.getElementById('start-button').disabled = true;
 
-            Object.entries(socket.roomData.gamePrefrences).forEach(([key, value]) => {
+            Object.entries(socket.roomData.gamePreferences).forEach(([key, value]) => {
                 const selectDOM = `
                     <div class="select-container">
                         <h2>${key}</h2>
@@ -122,7 +122,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         }
     });
 
-    socket.on('update gamePrefrences', data => {
+    socket.on('update gamePreferences', data => {
+        socket.roomData.gamePreferences = data;
         document.getElementById('settings').innerHTML = '';
         Object.entries(data).forEach(([key, value]) => {
             const selectDOM = `
@@ -140,6 +141,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         const [userData, connecting] = data;
 
         if (connecting) {
+            socket.roomData.users.add(userData.userId)
             socket.roomData.usersData[userData.userId] = userData;
             const playerDOM = `
                 <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
@@ -150,9 +152,13 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
 
         } else {
+            socket.roomData.users.delete(userData.userId)
             delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
             gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
+            Array.from(document.getElementById('players-list').children).splice(1 + Array.prototype.indexOf.call(document.getElementById('players-list').children, childToRemove)).forEach(child => {
+                // animate children of the players-list when a player leaves the room
+            });
             setTimeout(() => {
                 document.getElementById('players-list').removeChild(childToRemove)
             }, 1000);
