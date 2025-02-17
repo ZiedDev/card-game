@@ -35,6 +35,20 @@ document.addEventListener('pointerup', e => {
 });
 
 // Self Cards
+const heightDistrib = {
+    2: 3,
+    3: 10,
+    5: 20,
+    10: 50,
+    over: 30,
+};
+const spreadDistrib = {
+    2: 75,
+    3: 150,
+    5: 200,
+    10: 400,
+    over: 600,
+};
 const spreadParams = {
     cardsNumber: 0,
     spread: 400,
@@ -45,9 +59,14 @@ const selfCards = document.getElementById('self-cards');
 
 function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
     const R = (4 * height * height + spread * spread) / (8 * height);
+    let theta;
 
-    const psi = 2 * Math.asin(spread / (2 * R)) / (cardsNumber - 1);
-    const theta = (psi * index) + (Math.PI / 2) - Math.asin(spread / (2 * R));
+    if (cardsNumber <= 1) {
+        theta = (Math.PI / 2);
+    } else {
+        let psi = 2 * Math.asin(spread / (2 * R)) / (cardsNumber - 1);
+        theta = (psi * index) + (Math.PI / 2) - Math.asin(spread / (2 * R));
+    }
 
     const x = (R + extraRadius) * Math.cos(theta);
     const y = -1 * ((R + extraRadius) * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4) + yOffset);
@@ -61,8 +80,12 @@ function updateCardPositions() {
     cardContainers = [...cardContainers].reverse();
 
     spreadParams.cardsNumber = cardContainers.length;
-    spreadParams.spread = cardContainers.length >= 10 ? 600 : 400;
-    spreadParams.height = cardContainers.length >= 10 ? 20 : 50;
+    spreadParams.spread = Object.entries(spreadDistrib).find(([key]) => {
+        return (key == 'over' || cardContainers.length <= key)
+    })[1];
+    spreadParams.height = Object.entries(heightDistrib).find(([key]) => {
+        return (key == 'over' || cardContainers.length <= key)
+    })[1];;
 
     cardContainers.forEach((cardContainer, index) => {
         cardContainer.style = calculateCardPos({
