@@ -123,6 +123,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
     });
 
     socket.on('update gamePreferences', data => {
+        socket.roomData.gamePreferences = data;
         document.getElementById('settings').innerHTML = '';
         Object.entries(data).forEach(([key, value]) => {
             const selectDOM = `
