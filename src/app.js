@@ -198,7 +198,6 @@ io.on('connection', socket => {
         let roomCode = socketsData.get(socket.id).roomCode;
         roomsData.get(roomCode).started = true;
 
-        let cntr = 0;
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
                 if (roomsData.get(roomCode).gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
@@ -211,15 +210,12 @@ io.on('connection', socket => {
                         return;
                     }
                 }
-                cntr += count;
                 roomsData.get(roomCode).availableDeck.set(
                     subkey + '_' + key,
                     count * parseInt(roomsData.get(roomCode).gamePreferences['Number of decks'])
                 );
             });
         });
-
-        console.log('cntr', cntr);
 
         io.to(roomCode).emit('start game');
     });
@@ -230,7 +226,7 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    socket.on('draw cards', params => {
+    socket.on('draw cards', (params, callback) => {
         let roomCode = socketsData.get(socket.id).roomCode;
         let result = []
         if (params.tillColor) {
@@ -259,7 +255,7 @@ io.on('connection', socket => {
                 }
             }
         }
-        socket.emit('draw cards', result);
+        callback(result);
     });
 
     socket.on('test', () => {

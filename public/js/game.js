@@ -156,15 +156,12 @@ function removeSelfCard() {
     updateCardPositions();
 }
 
-for (let i = 0; i < 7; i++) {
-    addSelfCard(0, false);
-}
+socket.emit('draw cards', { count: 7, tillColor: null }, (result) => {
+    result.forEach(card => {
+        addSelfCard(0, card, false);
+    });
+});
 
 setTimeout(() => {
     updateCardPositions();
 }, 100);
-
-// Rest of socket functionality
-socket.on('draw cards', data => {
-    console.log(data);
-});
