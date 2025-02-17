@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 149.33 188.8">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #428bca;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5, .cls-6, .cls-7, .cls-8, .cls-9, .cls-10, .cls-11 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-1, .cls-7 {
+        stroke: #428bca;
+      }
+
+      .cls-2, .cls-3, .cls-4, .cls-5, .cls-6, .cls-7 {
+        fill: none;
+      }
+
+      .cls-2, .cls-11 {
+        stroke: #000;
+      }
+
+      .cls-3, .cls-8 {
+        stroke: #ebc968;
+      }
+
+      .cls-4, .cls-10 {
+        stroke: #acc77e;
+      }
+
+      .cls-12 {
+        fill: #fff;
+        stroke-width: 0px;
+      }
+
+      .cls-13 {
+        fill: #fdbe27;
+        filter: url(#drop-shadow-1);
+        font-family: Montserrat-SemiBold, Montserrat;
+        font-size: 21px;
+        font-variation-settings: 'wght' 600;
+        font-weight: 600;
+      }
+
+      .cls-5, .cls-9 {
+        stroke: #cb666a;
+      }
+
+      .cls-6 {
+        stroke: #fff;
+        stroke-width: 2.2px;
+      }
+
+      .cls-8 {
+        fill: #ebc968;
+      }
+
+      .cls-9 {
+        fill: #cb666a;
+      }
+
+      .cls-10 {
+        fill: #acc77e;
+      }
+
+      .cls-11 {
+        fill: #282828;
+      }
+    </style>
+    <filter id="drop-shadow-1" filterUnits="userSpaceOnUse">
+      <feOffset dx="7" dy="7"/>
+      <feGaussianBlur result="blur" stdDeviation="5"/>
+      <feFlood flood-color="#231f20" flood-opacity=".69"/>
+      <feComposite in2="blur" operator="in"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <g>
+        <rect class="cls-12" x="0" y="28.8" width="106.67" height="160" rx="5" ry="5"/>
+        <g>
+          <path class="cls-7" d="M103.34,151.09v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-7" d="M6.84,33.81h33.21L3.34,66.52v-29.21c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <path class="cls-1" d="M103.33,37.3v113.78l-36.72,32.72H6.83c-1.92,0-3.5-1.58-3.5-3.5v-113.79l36.71-32.71h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <ellipse class="cls-6" cx="53.33" cy="108.8" rx="74.17" ry="42.62" transform="translate(-67.83 107.98) rotate(-63.5)"/>
+      </g>
+      <g>
+        <rect class="cls-12" x="7.2" y="21.6" width="106.67" height="160" rx="5" ry="5"/>
+        <g>
+          <path class="cls-5" d="M110.54,143.89v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-5" d="M14.04,26.61h33.21L10.54,59.32v-29.21c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <path class="cls-9" d="M110.53,30.1v113.78l-36.72,32.72H14.03c-1.92,0-3.5-1.58-3.5-3.5V59.31L47.24,26.6h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <ellipse class="cls-6" cx="60.53" cy="101.6" rx="74.17" ry="42.62" transform="translate(-57.4 110.44) rotate(-63.5)"/>
+      </g>
+      <g>
+        <rect class="cls-12" x="14.4" y="14.4" width="106.67" height="160" rx="5" ry="5"/>
+        <g>
+          <path class="cls-4" d="M117.74,136.69v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-4" d="M21.24,19.41h33.21L17.74,52.12v-29.21c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <path class="cls-10" d="M117.73,22.9v113.78l-36.72,32.72H21.23c-1.92,0-3.5-1.58-3.5-3.5V52.11L54.44,19.4h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <ellipse class="cls-6" cx="67.73" cy="94.4" rx="74.17" ry="42.62" transform="translate(-46.97 112.9) rotate(-63.5)"/>
+      </g>
+      <g>
+        <rect class="cls-12" x="21.6" y="7.2" width="106.67" height="160" rx="5" ry="5"/>
+        <g>
+          <path class="cls-3" d="M124.94,129.49v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-3" d="M28.44,12.21h33.21L24.94,44.92V15.71c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <path class="cls-8" d="M124.93,15.7v113.78l-36.72,32.72H28.43c-1.92,0-3.5-1.58-3.5-3.5V44.91L61.64,12.2h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <ellipse class="cls-6" cx="74.93" cy="87.2" rx="74.17" ry="42.62" transform="translate(-36.54 115.35) rotate(-63.5)"/>
+      </g>
+      <g>
+        <rect class="cls-12" x="28.8" y="0" width="106.67" height="160" rx="5" ry="5"/>
+        <path class="cls-11" d="M132.13,8.5v113.78l-36.72,32.72h-59.78c-1.92,0-3.5-1.58-3.5-3.5V37.71L68.84,5h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <g>
+          <path class="cls-2" d="M132.14,122.29v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-2" d="M35.64,5.01h33.21l-36.71,32.71V8.51c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <ellipse class="cls-6" cx="82.13" cy="80" rx="74.17" ry="42.62" transform="translate(-26.11 117.81) rotate(-63.5)"/>
+      </g>
+      <text class="cls-13" transform="translate(56.65 109.24) rotate(-35.69) scale(1.07 1)"><tspan x="0" y="0">Wahid</tspan></text>
+    </g>
+  </g>
+</svg>

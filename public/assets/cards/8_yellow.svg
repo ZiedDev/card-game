@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 106.67 160.46">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #1e1e1e;
+        font-family: Montserrat-SemiBold, Montserrat;
+        font-size: 18px;
+        font-variation-settings: 'wght' 600;
+        font-weight: 600;
+      }
+
+      .cls-2, .cls-3 {
+        fill: none;
+      }
+
+      .cls-2, .cls-3, .cls-4 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2, .cls-4 {
+        stroke: #ebc968;
+      }
+
+      .cls-5 {
+        stroke-width: 0px;
+      }
+
+      .cls-5, .cls-6 {
+        fill: #fff;
+      }
+
+      .cls-6 {
+        font-family: Montserrat-Regular, Montserrat;
+        font-size: 35px;
+        font-variation-settings: 'wght' 400;
+        opacity: .98;
+      }
+
+      .cls-3 {
+        stroke: #fff;
+        stroke-width: 2.2px;
+      }
+
+      .cls-4 {
+        fill: #ebc968;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <g>
+        <rect class="cls-5" x="0" y="0" width="106.67" height="160" rx="5" ry="5"/>
+        <g>
+          <path class="cls-2" d="M103.34,122.29v29.22c0,1.92-1.57,3.5-3.5,3.5h-33.22l36.72-32.72Z"/>
+          <path class="cls-2" d="M6.84,5.01h33.21L3.34,37.72V8.51c0-1.93,1.58-3.5,3.5-3.5Z"/>
+        </g>
+        <path class="cls-4" d="M103.33,8.5v113.78l-36.72,32.72H6.83c-1.92,0-3.5-1.58-3.5-3.5V37.71L40.04,5h59.79c1.93,0,3.5,1.57,3.5,3.5Z"/>
+        <ellipse class="cls-3" cx="53.33" cy="80" rx="74.17" ry="42.62" transform="translate(-42.06 92.03) rotate(-63.5)"/>
+      </g>
+      <text class="cls-6" transform="translate(41.08 92.75) scale(1.1 1)"><tspan x="0" y="0">8</tspan></text>
+      <text class="cls-1" transform="translate(6.05 20.3) scale(1.07 1)"><tspan x="0" y="0">8</tspan></text>
+      <text class="cls-1" transform="translate(88.05 152.3) scale(1.07 1)"><tspan x="0" y="0">8</tspan></text>
+    </g>
+  </g>
+</svg>

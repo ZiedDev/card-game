@@ -68,12 +68,10 @@ body {
 }
 
 .card {
-    border: solid;
     --rx: 0deg;
     --ry: 0deg;
     --rz: 0deg;
     transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
-    background-color: var(--font-alt);
     height: 10rem;
     aspect-ratio: 2 / 3;
 }

@@ -72,13 +72,42 @@ function updateCardPositions() {
     });
 }
 
-function addSelfCard(update = true) {
+function getRandomCard() { //temp
+    const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const colors = ["blue", "green", "yellow", "red"];
+    const actions1 = ["reverse", "draw", "skip"];
+    const actions2 = ["wild", "draw", "draw4", "stack"];
+
+    const type = Math.floor(Math.random() * 3); // 0, 1, or 2
+
+    switch (type) {
+        case 0: // Number card
+            const number = numbers[Math.floor(Math.random() * numbers.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            return `${number}_${color}`;
+        case 1: // Action card 1
+            const action1 = actions1[Math.floor(Math.random() * actions1.length)];
+            const color2 = colors[Math.floor(Math.random() * colors.length)];
+            return `${action1}_${color2}`;
+        case 2: // Action card 2
+            const action2_ = actions2[Math.floor(Math.random() * actions2.length)];
+            return `${action2_}_wild`;
+    }
+}
+
+function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
-        <div class="card"></div>
+        <div class="card">
+            <img src="/assets/cards/${cardName ? cardName : getRandomCard()}.svg" alt="">
+        </div>
     </div>`;
-    selfCards.appendChild(htmlToElement(cardDOM));
-    const cardElement = selfCards.children[selfCards.children.length - 1]
+    if (index >= selfCards.children.length) {
+        selfCards.appendChild(htmlToElement(cardDOM));
+    } else {
+        selfCards.insertBefore(htmlToElement(cardDOM), selfCards.children[index]);
+    }
+    const cardElement = selfCards.children[index]
 
     cardElement.addEventListener('pointermove', e => {
         let cardContainers = document.querySelectorAll('.card-container');
@@ -104,7 +133,7 @@ function removeSelfCard() {
 }
 
 for (let i = 0; i < 7; i++) {
-    addSelfCard(false);
+    addSelfCard(0, false);
 }
 
 setTimeout(() => {
