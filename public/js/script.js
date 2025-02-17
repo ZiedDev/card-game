@@ -28,13 +28,21 @@ class StoredValue {
 }
 
 const gamePreferenceOptions = {
-    isSigma: {
-        options: ['on', 'off'],
-        default: 'off',
+    "Number of decks": {
+        options: ['1', '2', '3'],
+        default: '1',
     },
-    ligmaType: {
-        options: ['val1', 'val2', 'val3'],
-        default: 'val1',
+    "Wild cards": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Wild draw 2 card": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Wild stack card": {
+        options: ['enable', 'disable'],
+        default: 'enable',
     },
 }
 

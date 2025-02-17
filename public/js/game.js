@@ -1,3 +1,4 @@
+// Scrolling thing
 const cardScrollingDOM = document.getElementById('card-scrolling');
 const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
 
@@ -162,3 +163,8 @@ for (let i = 0; i < 7; i++) {
 setTimeout(() => {
     updateCardPositions();
 }, 100);
+
+// Rest of socket functionality
+socket.on('draw cards', data => {
+    console.log(data);
+});

@@ -3,13 +3,18 @@ require('dotenv').config();
 const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
-const rejoinTLE = process.env.rejoinTLE = process.env.rejoinTLE || (2 * 60 * 1000);// 2min
 
 // library imports
 const express = require('express');
 
 // js imports
-const { generateRandomString, stringifyWithSets, parseWithSets } = require('./funcs');
+const { generateRandomString,
+    stringifyWithSets,
+    parseWithSets,
+    Pair,
+    weightedRandomChoice,
+} = require('./funcs');
+const cardCount = require('./uno_card_count.json');
 
 // route imports
 
@@ -79,6 +84,7 @@ app.post('/createRoom', (req, res) => {
         rejoinableUsers: new Set([req.body.userId]),
         usersData: {},
         gamePreferences: {},
+        availableDeck: new Map(),
     });
 
     res.send(JSON.stringify(roomCode));
@@ -191,6 +197,30 @@ io.on('connection', socket => {
     socket.on('start game', () => {
         let roomCode = socketsData.get(socket.id).roomCode;
         roomsData.get(roomCode).started = true;
+
+        let cntr = 0;
+        Object.entries(cardCount).forEach(([key, value]) => {
+            Object.entries(value).forEach(([subkey, count]) => {
+                if (roomsData.get(roomCode).gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
+                    return;
+                } else {
+                    if (roomsData.get(roomCode).gamePreferences['Wild draw 2 card'] == 'disable' && subkey == 'draw') {
+                        return;
+                    }
+                    if (roomsData.get(roomCode).gamePreferences['Wild stack card'] == 'disable' && subkey == 'stack') {
+                        return;
+                    }
+                }
+                cntr += count;
+                roomsData.get(roomCode).availableDeck.set(
+                    subkey + '_' + key,
+                    count * parseInt(roomsData.get(roomCode).gamePreferences['Number of decks'])
+                );
+            });
+        });
+
+        console.log('cntr', cntr);
+
         io.to(roomCode).emit('start game');
     });
 
@@ -200,12 +230,44 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    // socket.on('test', () => {
-    //     console.log('TEST:');
-    //     console.log('rooms:', rooms);
-    //     console.log('roomsData:', roomsData);
-    //     console.log('socketsData:', socketsData);
-    // });
+    socket.on('draw cards', params => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        let result = []
+        if (params.tillColor) {
+            let choice = ' _ ';
+            while (choice.split('_')[1] != params.tillColor) {
+                choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck);
+                result.push(choice);
+                roomsData.get(roomCode).availableDeck.set(
+                    choice,
+                    roomsData.get(roomCode).availableDeck.get(choice) - 1
+                )
+                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
+                    roomsData.get(roomCode).availableDeck.delete(choice);
+                }
+            }
+        } else {
+            for (let i = 0; i < params.count; i++) {
+                let choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck)
+                result.push(choice);
+                roomsData.get(roomCode).availableDeck.set(
+                    choice,
+                    roomsData.get(roomCode).availableDeck.get(choice) - 1
+                )
+                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
+                    roomsData.get(roomCode).availableDeck.delete(choice);
+                }
+            }
+        }
+        socket.emit('draw cards', result);
+    });
+
+    socket.on('test', () => {
+        console.log('TEST:');
+        console.log('rooms:', rooms);
+        console.log('roomsData:', roomsData);
+        console.log('socketsData:', socketsData);
+    });
 });
 
 io.of("/").adapter.on("create-room", (room) => {
