@@ -155,6 +155,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
             gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
+            Array.from(document.getElementById('players-list').children).splice(1 + Array.prototype.indexOf.call(document.getElementById('players-list').children, childToRemove)).forEach(child => {
+                // animate children of the players-list when a player leaves the room
+            });
             setTimeout(() => {
                 document.getElementById('players-list').removeChild(childToRemove)
             }, 1000);

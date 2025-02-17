@@ -37,27 +37,34 @@ document.addEventListener('pointerup', e => {
 let cardContainers = document.querySelectorAll('.card-container');
 cardContainers = [...cardContainers].reverse();
 
-function ligma(s, h) {
-    const S = s;
-    const H = h;
+function calculateCardPos(index, { spread, height, extraRadius, cardsNumber }) {
+    const R = (4 * height * height + spread * spread) / (8 * height);
 
-    const R = (4 * H * H + S * S) / (8 * H);
-    const N = cardContainers.length;
+    const psi = 2 * Math.asin(spread / (2 * R)) / (cardsNumber - 1);
+    const theta = (psi * index) + (Math.PI / 2) - Math.asin(spread / (2 * R));
 
-    const psi = 2 * Math.asin(S / (2 * R)) / (N - 1);
+    const x = (R + extraRadius) * Math.cos(theta);
+    const y = -1 * ((R + extraRadius) * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4));
+    const ang = -1 * (180 / Math.PI) * (theta - (Math.PI / 2));
 
+    return `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+}
+
+function cardsSpread({ spread, height, extraRadius }) {
     cardContainers.forEach((cardContainer, index) => {
-        const theta = (psi * index) + (Math.PI / 2) - Math.asin(S / (2 * R));
-
-        const x = R * Math.cos(theta);
-        const y = -1 * (R * Math.sin(theta) - Math.sqrt(R * R - S * S / 4));
-        const ang = -1 * (180 / Math.PI) * (theta - (Math.PI / 2));
-
-        cardContainer.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+        cardContainer.style = calculateCardPos(index, {
+            spread,
+            height,
+            extraRadius,
+            cardsNumber: cardContainers.length
+        });
     });
 }
 
-ligma(
-    cardScrollingDOM.getBoundingClientRect().width - 200,
-    cardScrollingDOM.getBoundingClientRect().height
-)
+cardContainers.forEach((card, index) => {
+    card.addEventListener('pointerover', e => {
+
+    });
+});
+
+cardsSpread({ spread: 400, height: 50, extraRadius: 0 });

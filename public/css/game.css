@@ -3,7 +3,7 @@ body {
 }
 
 .your-cards {
-    overflow: hidden;
+    /* overflow: hidden; */
 
     position: absolute;
     left: 0;
