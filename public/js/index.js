@@ -36,11 +36,15 @@ playButton.addEventListener('click', async e => {
         }
         userName.val = nickname;
 
-        if (urlParams.get('r')) {
-            window.location.href = '/room/' + urlParams.get('r') + '?c=1';
-        } else {
-            createRoom();
-        }
+        startCurtains({ numberOfCurtains: 5, durationPerCurtain: 0.5, stagger: 0.2 });
+        setTimeout(() => {
+            if (urlParams.get('r')) {
+                window.location.href = '/room/' + urlParams.get('r') + '?c=1';
+            } else {
+                createRoom();
+            }
+        }, 1.3 * 1000);
+
     } else {
         alert('Nickname cant be empty');
     }
