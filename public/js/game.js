@@ -1,3 +1,4 @@
+// Scrolling thing
 const cardScrollingDOM = document.getElementById('card-scrolling');
 const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
 
@@ -122,7 +123,7 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
         <div class="card">
-            <img src="/assets/cards/${cardName ? cardName : getRandomCard()}.svg" alt="">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="">
         </div>
     </div>`;
     if (index >= selfCards.children.length) {
@@ -155,10 +156,23 @@ function removeSelfCard() {
     updateCardPositions();
 }
 
-for (let i = 0; i < 7; i++) {
-    addSelfCard(0, false);
-}
-
+socket.emit(
+    (socket.joinType != 'join' ? 'fetch cards' : 'draw cards'),
+    (socket.joinType != 'join' ? {} : {
+        count: 7, tillColor: null, grantUser: socket.data.userId,
+    }),
+    (result) => {
+        result.forEach(card => {
+            addSelfCard(0, card, false);
+        });
+    }
+);
 setTimeout(() => {
     updateCardPositions();
 }, 100);
+
+if (socket.joinType == 'join') {
+
+} else {
+
+}

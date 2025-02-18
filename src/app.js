@@ -3,13 +3,19 @@ require('dotenv').config();
 const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
-const rejoinTLE = process.env.rejoinTLE = process.env.rejoinTLE || (2 * 60 * 1000);// 2min
 
 // library imports
 const express = require('express');
 
 // js imports
-const { generateRandomString, stringifyWithSets, parseWithSets } = require('./funcs');
+const { generateRandomString,
+    stringifyWithSets,
+    parseWithSets,
+    Pair,
+    weightedRandomChoice,
+    randomChoice,
+} = require('./funcs');
+const cardCount = require('./uno_card_count.json');
 
 // route imports
 
@@ -49,7 +55,7 @@ app.get('/', (req, res) => {
 });
 
 app.put('/request-room-ejs', (req, res) => {
-    res.render(req.body.filename);
+    res.render(req.body.filename, req.body.ejsParams);
 });
 
 app.post('/request-username-valid', (req, res) => {
@@ -75,10 +81,20 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
+
         users: new Set(),
-        rejoinableUsers: new Set([req.body.userId]),
+        rejoinableUsers: new Set(),
         usersData: {},
+
+        gameData: {
+            currentPlayer: null,
+            groundCard: null,
+            direction: 'cw',
+        },
         gamePreferences: {},
+        usersCards: new Map(),
+        availableDeck: new Map(),
+        usedDeck: new Map(),
     });
 
     res.send(JSON.stringify(roomCode));
@@ -153,11 +169,14 @@ io.on('connection', socket => {
         if (socketData.hasOwnProperty('roomCode')) { // redundant
             let roomCode = socketData.roomCode;
             roomsData.get(roomCode).users.delete(socketData.userId);
+            io.to(roomCode).except(socket.id).emit(
+                'update userList',
+                [socketData, false, roomsData.get(roomCode).started]
+            );
             if (roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
             } else {
                 delete roomsData.get(roomCode).usersData[socketData.userId];
-                io.to(roomCode).except(socket.id).emit('update userList', [socketData, false]);
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
                 if (roomsData.get(roomCode).owner == socketData.userId && newOwnerId) {
                     roomsData.get(roomCode).owner = newOwnerId;
@@ -175,22 +194,56 @@ io.on('connection', socket => {
 
     socket.on('join room', data => {
         socket.join(data.roomCode);
+
+        // init socketData
         Object.entries(data).forEach(([property, value]) => { // semi-unnecessary
             socketsData.get(socket.id)[property] = value;
         });
+
         roomsData.get(data.roomCode).usersData[data.userId] = data;
+        if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
+            roomsData.get(data.roomCode).usersCards.set(data.userId, new Set());
+        }
         if (roomsData.get(data.roomCode).owner == data.userId) {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
         }
+
         socket.emit('init roomData', stringifyWithSets(roomsData.get(data.roomCode)));
-        io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
+        io.to(data.roomCode).except(socket.id).emit(
+            'update userList',
+            [data, true, roomsData.get(data.roomCode).started]
+        );
 
         if (roomsData.get(data.roomCode).started) socket.emit('start game');
     });
 
     socket.on('start game', () => {
         let roomCode = socketsData.get(socket.id).roomCode;
+
         roomsData.get(roomCode).started = true;
+        roomsData.get(roomCode).gameData.currentPlayer = randomChoice(roomsData.get(roomCode).users);
+        // roomsData.get(roomCode).gameData.groundCard
+
+        // init deck
+        Object.entries(cardCount).forEach(([key, value]) => {
+            Object.entries(value).forEach(([subkey, count]) => {
+                if (roomsData.get(roomCode).gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
+                    return;
+                } else {
+                    if (roomsData.get(roomCode).gamePreferences['Wild draw 2 card'] == 'disable' && subkey == 'draw') {
+                        return;
+                    }
+                    if (roomsData.get(roomCode).gamePreferences['Wild stack card'] == 'disable' && subkey == 'stack') {
+                        return;
+                    }
+                }
+                roomsData.get(roomCode).availableDeck.set(
+                    subkey + '_' + key,
+                    count * parseInt(roomsData.get(roomCode).gamePreferences['Number of decks'])
+                );
+            });
+        });
+
         io.to(roomCode).emit('start game');
     });
 
@@ -200,12 +253,56 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    // socket.on('test', () => {
-    //     console.log('TEST:');
-    //     console.log('rooms:', rooms);
-    //     console.log('roomsData:', roomsData);
-    //     console.log('socketsData:', socketsData);
-    // });
+    socket.on('draw cards', (params, callback) => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        let result = []
+        if (params.tillColor) {
+            let choice = ' _ ';
+            while (choice.split('_')[1] != params.tillColor) {
+                choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck);
+                result.push(choice);
+                roomsData.get(roomCode).availableDeck.set(
+                    choice,
+                    roomsData.get(roomCode).availableDeck.get(choice) - 1
+                )
+                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
+                    roomsData.get(roomCode).availableDeck.delete(choice);
+                }
+            }
+        } else {
+            for (let i = 0; i < params.count; i++) {
+                let choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck)
+                result.push(choice);
+                roomsData.get(roomCode).availableDeck.set(
+                    choice,
+                    roomsData.get(roomCode).availableDeck.get(choice) - 1
+                )
+                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
+                    roomsData.get(roomCode).availableDeck.delete(choice);
+                }
+            }
+        }
+        if (params.grantUser) {
+            result.forEach(card => {
+                roomsData.get(roomCode).usersCards.get(params.grantUser).add(card);
+            });
+        }
+        callback(result);
+    });
+
+    socket.on('fetch cards', (data, callback) => {
+        let socketData = socketsData.get(socket.id);
+        let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
+
+        callback(Array.from(result));
+    });
+
+    socket.on('test', () => {
+        console.log('TEST:');
+        console.log('rooms:', rooms);
+        console.log('roomsData:', roomsData);
+        console.log('socketsData:', socketsData);
+    });
 });
 
 io.of("/").adapter.on("create-room", (room) => {

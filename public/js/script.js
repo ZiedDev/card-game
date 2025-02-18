@@ -28,13 +28,21 @@ class StoredValue {
 }
 
 const gamePreferenceOptions = {
-    isSigma: {
-        options: ['on', 'off'],
-        default: 'off',
+    "Number of decks": {
+        options: ['1', '2', '3'],
+        default: '1',
     },
-    ligmaType: {
-        options: ['val1', 'val2', 'val3'],
-        default: 'val1',
+    "Wild cards": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Wild draw 2 card": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Wild stack card": {
+        options: ['enable', 'disable'],
+        default: 'enable',
     },
 }
 
@@ -42,7 +50,7 @@ let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
-
+let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1');
 let userGamePreferences = new StoredValue(
     'userGamePreferences',
     Object.keys(gamePreferenceOptions).reduce((acc, key) => {
@@ -73,7 +81,7 @@ async function createRoom() {
             // roomCode will be set right after
             roomCode.val = resRoomCode; // redundant
 
-            window.location.href = '/room/' + resRoomCode;
+            window.location.href = '/room/' + resRoomCode + '?c=1';
         })
     }).catch(err => {
         console.info(err + " url: " + url);
@@ -100,12 +108,13 @@ function encodeBase64(string) {
     return base64.replace(/[^a-zA-Z0-9]/g, '');
 }
 
-async function loadEJS(filename, callback = (html) => { }) {
+async function loadEJS(filename, callback = (html) => { }, ejsParams = {}) {
     await fetch('/request-room-ejs', {
         method: "PUT",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             filename,
+            ejsParams,
         }),
     }).then(response => {
         response.text().then(html => {
