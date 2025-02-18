@@ -159,11 +159,14 @@ io.on('connection', socket => {
         if (socketData.hasOwnProperty('roomCode')) { // redundant
             let roomCode = socketData.roomCode;
             roomsData.get(roomCode).users.delete(socketData.userId);
+            io.to(roomCode).except(socket.id).emit(
+                'update userList',
+                [socketData, false, roomsData.get(roomCode).started]
+            );
             if (roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
             } else {
                 delete roomsData.get(roomCode).usersData[socketData.userId];
-                io.to(roomCode).except(socket.id).emit('update userList', [socketData, false]);
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
                 if (roomsData.get(roomCode).owner == socketData.userId && newOwnerId) {
                     roomsData.get(roomCode).owner = newOwnerId;
@@ -189,7 +192,10 @@ io.on('connection', socket => {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
         }
         socket.emit('init roomData', stringifyWithSets(roomsData.get(data.roomCode)));
-        io.to(data.roomCode).except(socket.id).emit('update userList', [data, true]);
+        io.to(data.roomCode).except(socket.id).emit(
+            'update userList',
+            [data, true, roomsData.get(data.roomCode).started]
+        );
 
         if (roomsData.get(data.roomCode).started) socket.emit('start game');
     });

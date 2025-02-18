@@ -156,12 +156,14 @@ function removeSelfCard() {
     updateCardPositions();
 }
 
-socket.emit('draw cards', { count: 7, tillColor: null }, (result) => {
-    result.forEach(card => {
-        addSelfCard(0, card, false);
+if (socket.joinType == 'join') {
+    socket.emit('draw cards', { count: 7, tillColor: null }, (result) => {
+        result.forEach(card => {
+            addSelfCard(0, card, false);
+        });
     });
-});
 
-setTimeout(() => {
-    updateCardPositions();
-}, 100);
+    setTimeout(() => {
+        updateCardPositions();
+    }, 100);
+}

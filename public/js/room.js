@@ -18,13 +18,13 @@ async function getPlayResponse() {
 
     console.log('res-type', res);
     if (res == 'watch' || res == 'duplicate') {
-        return false;
+        return [false, res];
     } else if (res == 'conf_join') {
         window.location.href = '/?r=' + roomCode.val;
     } else if (res == 'join' || res == 'rejoin') {
-        return true;
+        return [true, res];
     }
-    return null
+    return [null, null]
 }
 
 let socket;
@@ -37,7 +37,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         document.getElementById('page-container').appendChild(htmlToElement(html))
     })
 
-    const isWatch = !(await getPlayResponse());
+    const [isWatch, type] = await getPlayResponse();
     if (isWatch != null) {
         socket = io({
             'reconnection': true,
@@ -49,7 +49,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
     window.history.replaceState({}, document.title, window.location.pathname);
 
-    if (isWatch) {
+    if (!isWatch) {
         await loadEJS('error', html => {
             document.write(html);
         }, { errorCode: 403, errorMessage: 'Forbidden, game started' });
@@ -64,6 +64,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         userGamePreferences: userGamePreferences.val,
     }
     socket.emit('join room', socket.data);
+    socket.joinType = type;
 
     socket.on('init roomData', data => {
         socket.roomData = parseWithSets(data);
@@ -86,6 +87,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         });
 
         if (socket.isOwner) {
+            document.getElementById('start-button').style.backgroundColor = 'var(--accent-green)';
+            document.getElementById('start-button').disabled = false;
             document.getElementById('start-button').addEventListener('click', e => {
                 socket.emit('start game');
             });
@@ -142,9 +145,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
     });
 
     socket.on('update userList', data => {
-        const [userData, connecting] = data;
+        const [userData, connecting, rejoin] = data;
 
-        if (connecting) {
+        if (connecting && !rejoin) {
             socket.roomData.users.add(userData.userId)
             socket.roomData.usersData[userData.userId] = userData;
             const playerDOM = `
@@ -154,8 +157,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 </div>`;
             document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
             const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
-
-        } else {
+        } else if (!connecting && !rejoin) {
             socket.roomData.users.delete(userData.userId)
             delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
@@ -166,6 +168,14 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             setTimeout(() => {
                 document.getElementById('players-list').removeChild(childToRemove)
             }, 1000);
+        } else if (connecting && rejoin) {
+            socket.roomData.rejoinableUsers.delete(userData.userId);
+            socket.roomData.users.add(userData.userId);
+            // remove from random ai mode
+        } else if (!connecting && rejoin) {
+            socket.roomData.rejoinableUsers.add(userData.userId);
+            socket.roomData.users.delete(userData.userId);
+            // put on random ai mode
         }
     });
 
