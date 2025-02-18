@@ -47,6 +47,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         });
     }
 
+    window.history.replaceState({}, document.title, window.location.pathname);
+
     if (isWatch) {
         console.log('watch mode');
         return;

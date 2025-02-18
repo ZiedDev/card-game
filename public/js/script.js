@@ -81,7 +81,7 @@ async function createRoom() {
             // roomCode will be set right after
             roomCode.val = resRoomCode; // redundant
 
-            window.location.href = '/room/' + resRoomCode;
+            window.location.href = '/room/' + resRoomCode + '?c=1';
         })
     }).catch(err => {
         console.info(err + " url: " + url);

@@ -81,7 +81,7 @@ app.post('/createRoom', (req, res) => {
         started: false,
         owner: req.body.userId,
         users: new Set(),
-        rejoinableUsers: new Set([req.body.userId]),
+        rejoinableUsers: new Set(),
         usersData: {},
         gamePreferences: {},
         availableDeck: new Map(),
