@@ -37,7 +37,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         document.getElementById('page-container').appendChild(htmlToElement(html))
     })
 
-    endCurtains({ numberOfCurtains: 5, durationPerCurtain: 0.5, stagger: 0.2 });
+    // const animationEndTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
     const [isWatch, type] = await getPlayResponse();
     if (isWatch != null) {

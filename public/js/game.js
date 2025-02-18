@@ -155,6 +155,24 @@ function removeSelfCard() {
     selfCards.removeChild(selfCards.children[Math.floor(Math.random() * selfCards.children.length)]);
     updateCardPositions();
 }
+const userNickname = document.getElementById('user-nickname');
+const userIcon = document.getElementById('user-icon');
+const turnsList = document.getElementById('turns-list');
+const turnListUsers = document.getElementById('users-container')
+
+userNickname.textContent = socket.data.userName;
+userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
+
+Object.values(socket.roomData.usersData).forEach((user, index) => {
+    const userDOM = `
+        <div class="player-info">
+          <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
+          <h2 class="player-nickname">${user.userName}</h2>
+          <div class="player-cards-count">6</div>
+        </div>`;
+
+    turnListUsers.appendChild(htmlToElement(userDOM))
+});
 
 socket.emit(
     (socket.joinType != 'join' ? 'fetch cards' : 'draw cards'),
@@ -176,22 +194,3 @@ if (socket.joinType == 'join') {
 } else {
 
 }
-
-const userNickname = document.getElementById('user-nickname');
-const userIcon = document.getElementById('user-icon');
-const turnsList = document.getElementById('turns-list');
-const turnListUsers = document.getElementById('users-container')
-
-userNickname.textContent = socket.data.userName;
-userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
-
-Object.values(socket.roomData.usersData).forEach((user, index) => {
-    const userDOM = `
-        <div class="player-info">
-          <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
-          <h2 class="player-nickname">${user.userName}</h2>
-          <div class="player-cards-count">6</div>
-        </div>`;
-
-    turnListUsers.appendChild(htmlToElement(userDOM))
-});
