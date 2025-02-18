@@ -24,7 +24,7 @@ async function getPlayResponse() {
     } else if (res == 'join' || res == 'rejoin') {
         return [true, res];
     }
-    return [null, null]
+    return [null, res]
 }
 
 let socket;
@@ -45,9 +45,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             'reconnectionDelayMax': 5000,
             'reconnectionAttempts': 50
         });
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
-
-    window.history.replaceState({}, document.title, window.location.pathname);
+    if (type == 'conf_join') window.location.href = '/?r=' + roomCode.val;;
 
     if (!isWatch) {
         await loadEJS('error', html => {

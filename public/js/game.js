@@ -156,14 +156,23 @@ function removeSelfCard() {
     updateCardPositions();
 }
 
-if (socket.joinType == 'join') {
-    socket.emit('draw cards', { count: 7, tillColor: null }, (result) => {
+socket.emit(
+    (socket.joinType != 'join' ? 'fetch cards' : 'draw cards'),
+    (socket.joinType != 'join' ? {} : {
+        count: 7, tillColor: null, grantUser: socket.data.userId,
+    }),
+    (result) => {
         result.forEach(card => {
             addSelfCard(0, card, false);
         });
-    });
+    }
+);
+setTimeout(() => {
+    updateCardPositions();
+}, 100);
 
-    setTimeout(() => {
-        updateCardPositions();
-    }, 100);
+if (socket.joinType == 'join') {
+
+} else {
+
 }

@@ -48,10 +48,16 @@ function weightedRandomChoice(map) {
     return key;
 }
 
+function randomChoice(set) {
+    const arr = Array.from(set);
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
 module.exports = {
     generateRandomString,
     stringifyWithSets,
     parseWithSets,
     Pair,
     weightedRandomChoice,
+    randomChoice,
 }

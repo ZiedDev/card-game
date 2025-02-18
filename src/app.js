@@ -13,6 +13,7 @@ const { generateRandomString,
     parseWithSets,
     Pair,
     weightedRandomChoice,
+    randomChoice,
 } = require('./funcs');
 const cardCount = require('./uno_card_count.json');
 
@@ -80,11 +81,20 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
+
         users: new Set(),
         rejoinableUsers: new Set(),
         usersData: {},
+
+        gameData: {
+            currentPlayer: null,
+            groundCard: null,
+            direction: 'cw',
+        },
         gamePreferences: {},
+        usersCards: new Map(),
         availableDeck: new Map(),
+        usedDeck: new Map(),
     });
 
     res.send(JSON.stringify(roomCode));
@@ -184,13 +194,20 @@ io.on('connection', socket => {
 
     socket.on('join room', data => {
         socket.join(data.roomCode);
+
+        // init socketData
         Object.entries(data).forEach(([property, value]) => { // semi-unnecessary
             socketsData.get(socket.id)[property] = value;
         });
+
         roomsData.get(data.roomCode).usersData[data.userId] = data;
+        if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
+            roomsData.get(data.roomCode).usersCards.set(data.userId, new Set());
+        }
         if (roomsData.get(data.roomCode).owner == data.userId) {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
         }
+
         socket.emit('init roomData', stringifyWithSets(roomsData.get(data.roomCode)));
         io.to(data.roomCode).except(socket.id).emit(
             'update userList',
@@ -202,8 +219,12 @@ io.on('connection', socket => {
 
     socket.on('start game', () => {
         let roomCode = socketsData.get(socket.id).roomCode;
-        roomsData.get(roomCode).started = true;
 
+        roomsData.get(roomCode).started = true;
+        roomsData.get(roomCode).gameData.currentPlayer = randomChoice(roomsData.get(roomCode).users);
+        // roomsData.get(roomCode).gameData.groundCard
+
+        // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
                 if (roomsData.get(roomCode).gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
@@ -261,7 +282,21 @@ io.on('connection', socket => {
                 }
             }
         }
+        if (params.grantUser) {
+            result.forEach(card => {
+                roomsData.get(roomCode).usersCards.get(params.grantUser).add(card);
+            });
+            console.log(roomsData.get(roomCode).usersCards, roomCode, params.grantUser);
+        }
         callback(result);
+    });
+
+    socket.on('fetch cards', (data, callback) => {
+        let socketData = socketsData.get(socket.id);
+        let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
+        console.log(roomsData.get(socketData.roomCode).usersCards, socketData.roomCode, socketData.userId);
+
+        callback(Array.from(result));
     });
 
     socket.on('test', () => {
