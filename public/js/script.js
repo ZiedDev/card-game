@@ -60,7 +60,7 @@ let userGamePreferences = new StoredValue(
 );
 
 
-console.log(userId, userName, userPfp, roomCode, userGamePreferences);
+console.log(userId, userName, userPfp, roomCode, userDeckSkin, userGamePreferences);
 
 function _resetUserStorage() {
     localStorage.removeItem('userId');

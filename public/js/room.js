@@ -47,11 +47,13 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         });
         window.history.replaceState({}, document.title, window.location.pathname);
     }
-    if (type == 'conf_join') window.location.href = '/?r=' + roomCode.val;;
+    if (type == 'conf_join') window.location.href = '/?r=' + roomCode.val;
 
     if (!isWatch) {
         await loadEJS('error', html => {
+            document.open();
             document.write(html);
+            document.close();
         }, { errorCode: 403, errorMessage: 'Forbidden, game started' });
         return;
     }

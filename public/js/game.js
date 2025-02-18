@@ -123,7 +123,7 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
         <div class="card">
-            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
         </div>
     </div>`;
     if (index >= selfCards.children.length) {
@@ -176,3 +176,22 @@ if (socket.joinType == 'join') {
 } else {
 
 }
+
+const userNickname = document.getElementById('user-nickname');
+const userIcon = document.getElementById('user-icon');
+const turnsList = document.getElementById('turns-list');
+const turnListUsers = document.getElementById('users-container')
+
+userNickname.textContent = socket.data.userName;
+userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
+
+Object.values(socket.roomData.usersData).forEach((user, index) => {
+    const userDOM = `
+        <div class="player-info">
+          <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
+          <h2 class="player-nickname">${user.userName}</h2>
+          <div class="player-cards-count">6</div>
+        </div>`;
+
+    turnListUsers.appendChild(htmlToElement(userDOM))
+});

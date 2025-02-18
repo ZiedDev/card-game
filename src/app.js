@@ -92,9 +92,11 @@ app.post('/createRoom', (req, res) => {
             direction: 'cw',
         },
         gamePreferences: {},
+
+        // not sended to client
         usersCards: new Map(),
         availableDeck: new Map(),
-        usedDeck: new Map(),
+        discardPile: new Map(),
     });
 
     res.send(JSON.stringify(roomCode));
@@ -166,7 +168,7 @@ io.on('connection', socket => {
 
     socket.on('disconnecting', () => {
         let socketData = socketsData.get(socket.id);
-        if (socketData.hasOwnProperty('roomCode')) { // redundant
+        if (socketData.hasOwnProperty('roomCode')) { // redundant (condition only)
             let roomCode = socketData.roomCode;
             roomsData.get(roomCode).users.delete(socketData.userId);
             io.to(roomCode).except(socket.id).emit(
