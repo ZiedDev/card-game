@@ -50,7 +50,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
     window.history.replaceState({}, document.title, window.location.pathname);
 
     if (isWatch) {
-        console.log('watch mode');
+        await loadEJS('error', html => {
+            document.write(html);
+        }, { errorCode: 403, errorMessage: 'Forbidden, game started' });
         return;
     }
 

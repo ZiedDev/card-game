@@ -108,12 +108,13 @@ function encodeBase64(string) {
     return base64.replace(/[^a-zA-Z0-9]/g, '');
 }
 
-async function loadEJS(filename, callback = (html) => { }) {
+async function loadEJS(filename, callback = (html) => { }, ejsParams = {}) {
     await fetch('/request-room-ejs', {
         method: "PUT",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             filename,
+            ejsParams,
         }),
     }).then(response => {
         response.text().then(html => {

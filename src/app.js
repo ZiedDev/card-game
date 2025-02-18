@@ -54,7 +54,7 @@ app.get('/', (req, res) => {
 });
 
 app.put('/request-room-ejs', (req, res) => {
-    res.render(req.body.filename);
+    res.render(req.body.filename, req.body.ejsParams);
 });
 
 app.post('/request-username-valid', (req, res) => {
