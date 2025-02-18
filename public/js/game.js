@@ -123,7 +123,7 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
         <div class="card">
-            <img src="/assets/cards/${cardName ? cardName : getRandomCard()}.svg" alt="">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="">
         </div>
     </div>`;
     if (index >= selfCards.children.length) {

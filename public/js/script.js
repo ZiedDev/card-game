@@ -50,7 +50,7 @@ let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
-
+let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1');
 let userGamePreferences = new StoredValue(
     'userGamePreferences',
     Object.keys(gamePreferenceOptions).reduce((acc, key) => {

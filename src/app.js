@@ -286,7 +286,6 @@ io.on('connection', socket => {
             result.forEach(card => {
                 roomsData.get(roomCode).usersCards.get(params.grantUser).add(card);
             });
-            console.log(roomsData.get(roomCode).usersCards, roomCode, params.grantUser);
         }
         callback(result);
     });
@@ -294,7 +293,6 @@ io.on('connection', socket => {
     socket.on('fetch cards', (data, callback) => {
         let socketData = socketsData.get(socket.id);
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
-        console.log(roomsData.get(socketData.roomCode).usersCards, socketData.roomCode, socketData.userId);
 
         callback(Array.from(result));
     });
