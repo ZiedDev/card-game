@@ -198,3 +198,7 @@ function animateCurtains(isStart = true, { numberOfCurtains = 5, durationPerCurt
 
     return totalAnimationTime;
 }
+
+dotProduct = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
+magnitude = (a) => Math.sqrt(a.reduce((acc, x) => { acc += x * x; return acc; }, 0));
+angleBetVectors = (a, b) => Math.acos(dotProduct(a, b) / (magnitude(a) * magnitude(b)));

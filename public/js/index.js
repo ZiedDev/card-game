@@ -7,6 +7,7 @@ const userImageReload = document.getElementById('user-image-reload');
 
 if (urlParams.get('r')) {
     playButton.textContent = 'Join';
+    playButton.style.backgroundColor = 'var(--accent-green-alt)';
 }
 
 async function getUsernameValid(name, room) {

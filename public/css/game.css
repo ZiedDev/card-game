@@ -73,17 +73,41 @@ body {
     height: 180px;
 }
 
+@property --rx {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --ry {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --rz {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
 .card {
     user-select: none;
     box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
     /* border: var(--font) 2pt solid; */
-    --rx: 0deg;
-    --ry: 0deg;
-    --rz: 0deg;
+    --rx: inherit;
+    --ry: inherit;
+    --rz: inherit;
     transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
     height: 10rem;
     aspect-ratio: 2 / 3;
+
+    transition: --rx 0.5s, --ry 0.5s, --rz 0.5s;
+}
+
+.card:hover {
+    transition: none;
 }
 
 .card img {

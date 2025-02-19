@@ -56,6 +56,7 @@ const spreadParams = {
     height: 50,
     yOffset: 30,
 }
+const zDepth = 200;
 const selfCards = document.getElementById('self-cards');
 
 function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
@@ -131,9 +132,11 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     } else {
         selfCards.insertBefore(htmlToElement(cardDOM), selfCards.children[index]);
     }
-    const cardElement = selfCards.children[index]
+    const cardElement = selfCards.children[index];
+    const innerCardElement = cardElement.children[0];
 
-    cardElement.addEventListener('pointermove', e => {
+    // card position updates
+    cardElement.addEventListener('pointerenter', e => {
         let cardContainers = document.querySelectorAll('.card-container');
         cardContainers = [...cardContainers].reverse();
         const index = Array.prototype.indexOf.call(cardContainers, cardElement);
@@ -146,6 +149,24 @@ function addSelfCard(index = 0, cardName = null, update = true) {
 
     cardElement.addEventListener('pointerleave', e => {
         updateCardPositions();
+    });
+
+    // card 3d updates
+    innerCardElement.addEventListener('pointermove', e => {
+        const cardRect = innerCardElement.getBoundingClientRect()
+        const centerX = (cardRect.left + cardRect.right) / 2;
+        const centerY = (cardRect.top + cardRect.bottom) / 2;
+
+        const [deltaX, deltaY] = [e.clientX - centerX, e.clientY - centerY];
+
+        const angX = -Math.sign(deltaY) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaY, zDepth]);
+        const angY = Math.sign(deltaX) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaX, zDepth]);
+
+        innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
+    });
+
+    innerCardElement.addEventListener('pointerleave', e => {
+        innerCardElement.style = `--rx:0deg;--ry:0deg;`;
     });
 
     if (update) updateCardPositions();
