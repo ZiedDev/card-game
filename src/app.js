@@ -3,6 +3,7 @@ require('dotenv').config();
 const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+const maxPileSize = process.env.MAX_PILE_SIZE = process.env.MAX_PILE_SIZE || 10;
 
 // library imports
 const express = require('express');
@@ -85,13 +86,15 @@ app.post('/createRoom', (req, res) => {
         users: new Set(),
         rejoinableUsers: new Set(),
         usersData: {},
+        gamePreferences: {},
 
         gameData: {
             currentPlayer: null,
             groundCard: null,
             direction: 'cw',
         },
-        gamePreferences: {},
+        lastPileCards: new Set(),
+        userIterator: null,
 
         // not sended to client
         usersCards: new Map(),
@@ -223,8 +226,10 @@ io.on('connection', socket => {
         let roomCode = socketsData.get(socket.id).roomCode;
 
         roomsData.get(roomCode).started = true;
-        roomsData.get(roomCode).gameData.currentPlayer = randomChoice(roomsData.get(roomCode).users);
-        // roomsData.get(roomCode).gameData.groundCard
+        const selectedUser = randomChoice(roomsData.get(roomCode).users);
+        roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
+        roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
+        while (roomsData.get(roomCode).userIterator.next().value != selectedUser) { }
 
         // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
@@ -247,6 +252,7 @@ io.on('connection', socket => {
         });
 
         io.to(roomCode).emit('start game');
+        io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
     });
 
     socket.on('update gamePreferences', data => {
@@ -297,6 +303,33 @@ io.on('connection', socket => {
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
 
         callback(Array.from(result));
+    });
+
+    socket.on('throw card', data => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        console.log(socketsData.get(socket.id).userName, roomsData.get(roomCode).gameData.currentPlayer);
+
+        roomsData.get(roomCode).gameData.groundCard = data.card;
+
+        roomsData.get(roomCode).lastPileCards.add(data.card);
+        if (roomsData.get(roomCode).lastPileCards.length > maxPileSize) {
+            const first = roomsData.get(roomCode).lastPileCards.values().next().value;
+            roomsData.get(roomCode).lastPileCards.remove(first);
+        }
+
+        let nextUser = roomsData.get(roomCode).userIterator.next().value;
+        if (!nextUser) {
+            roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
+            nextUser = roomsData.get(roomCode).userIterator.next().value;
+        }
+        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+
+
+        // handle card specific things
+
+        // reverse iterator if reverse
+
+        io.to(roomCode).emit('next turn', stringifyWithSets(roomsData.get(roomCode)));
     });
 
     socket.on('test', () => {

@@ -186,7 +186,7 @@ userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
 
 Object.values(socket.roomData.usersData).forEach((user, index) => {
     const userDOM = `
-        <div class="player-info">
+        <div class="player-info" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
           <div class="player-cards-count">6</div>
@@ -216,4 +216,12 @@ if (socket.joinType == 'join') {
 
 } else {
 
+}
+
+if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
+    socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
+        (result) => {
+            socket.emit('throw card', { card: result[0] });
+        }
+    );
 }

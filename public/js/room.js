@@ -25,7 +25,7 @@ async function getRoomResponse() {
 }
 
 let socket;
-const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
+const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.25 };
 
 (async () => {
     const roomResponse = await getRoomResponse();
@@ -94,8 +94,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             </div>`;
 
             document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
-            gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
         });
+        gsap.from(`.player`, playerListAnimationObject);
 
         if (socket.isOwner) {
             document.getElementById('start-button').style.backgroundColor = 'var(--accent-green)';
@@ -184,10 +184,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             socket.roomData.rejoinableUsers.delete(userData.userId);
             socket.roomData.users.add(userData.userId);
             // remove from random ai mode
+            document.getElementById(`${userData.userId}-player-info`).classList.remove('away');
         } else if (!connecting && rejoin) {
             socket.roomData.rejoinableUsers.add(userData.userId);
             socket.roomData.users.delete(userData.userId);
             // put on random ai mode
+            document.getElementById(`${userData.userId}-player-info`).classList.add('away');
         }
     });
 
@@ -207,5 +209,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
                 document.getElementById('page-container').appendChild(script);
             });
         }, totaltAnimationTime);
+    });
+
+    socket.on('next turn', data => {
+        console.log(parseWithSets(data));
     });
 })();
