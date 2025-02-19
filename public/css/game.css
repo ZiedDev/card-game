@@ -2,6 +2,11 @@ body {
     user-select: none;
 }
 
+.you {
+    z-index: 100;
+    position: relative;
+}
+
 .self-cards {
     /* overflow: hidden; */
 
@@ -38,7 +43,8 @@ body {
     inherits: false;
 }
 
-.card-container {
+.self-cards .card-container {
+    user-select: none;
     --x: 0px;
     --y: 0px;
     --ang: 0deg;
@@ -58,31 +64,218 @@ body {
     transition: --x 0.3s, --y 0.3s, --ang 0.3s;
 }
 
-.card-container::after {
+.self-cards .card-container::after {
     content: '';
     position: absolute;
     top: 100%;
     left: 0;
     width: 100%;
-    height: 80px;
+    height: 180px;
 }
 
-.card {
-    --rx: 0deg;
-    --ry: 0deg;
-    --rz: 0deg;
+@property --rx {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --ry {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@property --rz {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+.self-cards .card {
+    user-select: none;
+    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
+    border-radius: 5pt;
+    /* border: var(--font) 2pt solid; */
+    --rx: inherit;
+    --ry: inherit;
+    --rz: inherit;
     transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
     height: 10rem;
     aspect-ratio: 2 / 3;
+
+    transition: --rx 0.5s, --ry 0.5s, --rz 0.5s;
+}
+
+.self-cards .card:hover {
+    transition: none;
+}
+
+.self-cards .card img {
+    user-select: none;
 }
 
 .card-scrolling {
-    background-color: cadetblue;
+    /* background-color: cadetblue; */
     position: fixed;
     left: 50%;
-    bottom: 0;
+    bottom: 2rem;
     transform: translateX(-50%);
 
     height: 15rem;
     width: clamp(25rem, 45vw, 50rem);
+}
+
+.user-info {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    width: auto;
+    height: fit-content;
+    padding: 1rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.user-nickname {
+    font-size: 26pt;
+    font-weight: 900;
+    padding: 0;
+    margin: 0;
+}
+
+.user-icon {
+    width: 5rem;
+    height: 5rem;
+    transform: scale(1.6367352185);
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+
+.user-cards-count {
+    background-color: var(--font);
+    color: var(--font-alt);
+    border-radius: 1rem;
+    padding: 1rem;
+    font-size: 26pt;
+    font-weight: 900;
+}
+
+.table {
+    position: fixed;
+    top: calc(75% - 15rem);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 2rem;
+}
+
+.drawing-deck {
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+    box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
+    border-radius: 5pt;
+}
+
+.discard-pile {
+    position: relative;
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+    box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
+    border-radius: 5pt;
+}
+
+.discard-pile .card {
+    --x: inherit;
+    --y: inherit;
+    --ang: inherit;
+    position: absolute;
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
+    transform: rotate(var(--ang));
+    translate: var(--x) var(--y);
+}
+
+.turns-list {
+    padding: 1rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 18rem;
+    /* height: calc(100vh - 8rem); */
+    background-color: var(--font-alt);
+    border-radius: 0 0 0 2rem;
+}
+
+.turn-indicator {
+    position: absolute;
+
+    top: 50%;
+    right: calc(100% + 2rem);
+    transform: translateY(-50%);
+
+    font-size: 16pt;
+    font-weight: 900;
+    text-wrap: nowrap;
+}
+
+.turns-list .users-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.turns-list .player-info {
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 3rem auto 2.882rem;
+    align-items: center;
+    position: relative;
+
+    border-radius: 1rem;
+    box-shadow: inset 0 0 5px 2px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 250ms ease;
+}
+
+.turns-list .player-info.turn {
+    box-shadow: inset 0 0 20px 1px rgb(68, 255, 65);
+}
+
+.turns-list .player-info.away {
+    box-shadow: inset 0 0 10px 1px rgb(255, 68, 65);
+}
+
+.turns-list .player-info.away .player-icon {
+    filter: grayscale(1);
+}
+
+.player-info .player-icon {
+    transform: scale(1.6367352185);
+    width: 3rem;
+    height: 3rem;
+}
+
+.player-info .player-nickname {
+    font-size: 16pt;
+    font-weight: 900;
+    padding: 0;
+    margin: 0;
+}
+
+.player-info .player-cards-count {
+    font-size: 16pt;
+    font-weight: 900;
+    padding: 0;
+    margin: 0;
+
+    background-color: var(--font);
+    color: var(--font-alt);
+    border-radius: 1rem;
+    padding: 1rem;
 }

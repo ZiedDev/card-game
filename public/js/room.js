@@ -5,7 +5,7 @@ if (userId.val == '' || userName.val == '') {
     window.location.href = '/?r=' + roomCode.val;
 }
 
-async function getPlayResponse() {
+async function getRoomResponse() {
     const response = await fetch(window.location.pathname, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -16,45 +16,52 @@ async function getPlayResponse() {
     });
     const res = await response.json();
 
+    // watch, duplicate -> false
+    // conf_join -> forward to /?r=roomCode.val
+    // join, rejoin -> true
     console.log('res-type', res);
-    if (res == 'watch' || res == 'duplicate') {
-        return [false, res];
-    } else if (res == 'conf_join') {
-        window.location.href = '/?r=' + roomCode.val;
-    } else if (res == 'join' || res == 'rejoin') {
-        return [true, res];
-    }
-    return [null, res]
+
+    return res;
 }
 
 let socket;
-const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
+const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.25 };
 
 (async () => {
-    // load DOM Content
-    await loadEJS('partials/room-content', html => {
-        document.getElementById('page-container').innerHTML = ''
-        document.getElementById('page-container').appendChild(htmlToElement(html))
-    })
+    const roomResponse = await getRoomResponse();
 
-    const [isWatch, type] = await getPlayResponse();
-    if (isWatch != null) {
-        socket = io({
-            'reconnection': true,
-            'reconnectionDelay': 1000,
-            'reconnectionDelayMax': 5000,
-            'reconnectionAttempts': 50
-        });
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    if (type == 'conf_join') window.location.href = '/?r=' + roomCode.val;;
-
-    if (!isWatch) {
-        await loadEJS('error', html => {
-            document.write(html);
-        }, { errorCode: 403, errorMessage: 'Forbidden, game started' });
+    // handle join and load DOM Content
+    if (roomResponse == 'conf_join') {
+        window.location.href = '/?r=' + roomCode.val;
         return;
+    } else if (roomResponse == 'watch' || roomResponse == 'duplicate') {
+        await loadEJS('error', html => {
+            document.open();
+            document.write(html);
+            document.close();
+        }, {
+            errorCode: 403,
+            errorMessage: 'Forbidden, ' + (roomResponse == 'watch' ? 'game already started' : 'already in room')
+        });
+        return;
+    } else if (roomResponse == 'join') {
+        await loadEJS('partials/room-content', html => {
+            document.getElementById('page-container').innerHTML = ''
+            document.getElementById('page-container').appendChild(htmlToElement(html))
+        });
+        animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+    } else if (roomResponse == 'rejoin') {
+        // await the backend start game response
     }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    socket = io({
+        'reconnection': true,
+        'reconnectionDelay': 1000,
+        'reconnectionDelayMax': 5000,
+        'reconnectionAttempts': 50
+    });
 
     socket.data = {
         userId: userId.val,
@@ -64,11 +71,15 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
         userGamePreferences: userGamePreferences.val,
     }
     socket.emit('join room', socket.data);
-    socket.joinType = type;
+
+    socket.joinType = roomResponse;
+
 
     socket.on('init roomData', data => {
         socket.roomData = parseWithSets(data);
         socket.isOwner = socket.roomData.owner == userId.val;
+
+        if (socket.joinType == 'rejoin') return;
 
         document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
 
@@ -83,8 +94,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             </div>`;
 
             document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
-            gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
         });
+        gsap.from(`.player`, playerListAnimationObject);
 
         if (socket.isOwner) {
             document.getElementById('start-button').style.backgroundColor = 'var(--accent-green)';
@@ -131,6 +142,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
 
     socket.on('update gamePreferences', data => {
         socket.roomData.gamePreferences = data;
+        if (socket.joinType == 'rejoin') return;
         document.getElementById('settings').innerHTML = '';
         Object.entries(data).forEach(([key, value]) => {
             const selectDOM = `
@@ -172,22 +184,30 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1 };
             socket.roomData.rejoinableUsers.delete(userData.userId);
             socket.roomData.users.add(userData.userId);
             // remove from random ai mode
+            document.getElementById(`${userData.userId}-player-info`).classList.remove('away');
         } else if (!connecting && rejoin) {
             socket.roomData.rejoinableUsers.add(userData.userId);
             socket.roomData.users.delete(userData.userId);
             // put on random ai mode
+            document.getElementById(`${userData.userId}-player-info`).classList.add('away');
         }
     });
 
     socket.on('start game', async () => {
-        await loadEJS('partials/game-content', html => {
-            document.getElementById('page-container').innerHTML = '';
-            document.getElementById('page-container').appendChild(htmlToElement(html));
+        let totaltAnimationTime = 0;
+        if (socket.joinType == 'join') {
+            totaltAnimationTime = animateCurtains(true, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+        }
+        setTimeout(async () => {
+            await loadEJS('partials/game-content', html => {
+                document.getElementById('page-container').innerHTML = '';
+                document.getElementById('page-container').appendChild(htmlToElement(html));
 
-            // necessary for script to run
-            const script = document.createElement('script');
-            script.src = '/js/game.js';
-            document.getElementById('page-container').appendChild(script);
-        });
+                // necessary for script to run
+                const script = document.createElement('script');
+                script.src = '/js/game.js';
+                document.getElementById('page-container').appendChild(script);
+            });
+        }, totaltAnimationTime);
     });
 })();

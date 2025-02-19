@@ -60,7 +60,7 @@ let userGamePreferences = new StoredValue(
 );
 
 
-console.log(userId, userName, userPfp, roomCode, userGamePreferences);
+console.log(userId, userName, userPfp, roomCode, userDeckSkin, userGamePreferences);
 
 function _resetUserStorage() {
     localStorage.removeItem('userId');
@@ -157,3 +157,48 @@ function parseWithSets(str) {
         return value;
     });
 }
+
+function animateCurtains(isStart = true, { numberOfCurtains = 5, durationPerCurtain = 1, stagger = 0.25 }) {
+    const totalAnimationTime = (durationPerCurtain + stagger * (numberOfCurtains - 1)) * 1000;
+
+    const curtainsContainer = document.createElement('div');
+    curtainsContainer.style = `
+        width: 100vw;
+        height: 100vh;
+        z-index: 10000;
+        display: grid;
+        grid-template-columns: repeat(${numberOfCurtains}, 1fr);
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    `;
+
+    for (let i = 0; i < numberOfCurtains; i++) {
+        const curtainElement = document.createElement('div');
+        curtainElement.classList.add('curtain');
+        curtainElement.style = `
+            transform: translateY(${isStart ? '-100%' : '0'});
+            height: 300%;
+            border-radius: 0 0 100rem 100rem;
+            background-color: var(--font);
+        `;
+        curtainsContainer.appendChild(curtainElement);
+    }
+
+    document.body.appendChild(curtainsContainer);
+
+    const tween = gsap.to('.curtain', { y: isStart ? '0' : '-100%', duration: durationPerCurtain, stagger: stagger });
+
+    // removing the curtain after animation
+    setTimeout(() => {
+        curtainsContainer.parentElement.removeChild(curtainsContainer);
+    }, totalAnimationTime + 500);
+
+    return totalAnimationTime;
+}
+
+dotProduct = (a, b) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
+magnitude = (a) => Math.sqrt(a.reduce((acc, x) => { acc += x * x; return acc; }, 0));
+angleBetVectors = (a, b) => Math.acos(dotProduct(a, b) / (magnitude(a) * magnitude(b)));

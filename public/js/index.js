@@ -7,6 +7,7 @@ const userImageReload = document.getElementById('user-image-reload');
 
 if (urlParams.get('r')) {
     playButton.textContent = 'Join';
+    playButton.style.backgroundColor = 'var(--accent-green-alt)';
 }
 
 async function getUsernameValid(name, room) {
@@ -36,11 +37,16 @@ playButton.addEventListener('click', async e => {
         }
         userName.val = nickname;
 
-        if (urlParams.get('r')) {
-            window.location.href = '/room/' + urlParams.get('r') + '?c=1';
-        } else {
-            createRoom();
-        }
+        const animationEndTime = animateCurtains(true, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+
+        setTimeout(() => {
+            if (urlParams.get('r')) {
+                window.location.href = '/room/' + urlParams.get('r') + '?c=1';
+            } else {
+                createRoom();
+            }
+        }, animationEndTime);
+
     } else {
         alert('Nickname cant be empty');
     }

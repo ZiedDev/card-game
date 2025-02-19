@@ -56,7 +56,9 @@ const spreadParams = {
     height: 50,
     yOffset: 30,
 }
+const zDepth = 200;
 const selfCards = document.getElementById('self-cards');
+const discardPile = document.getElementById('discard-pile');
 
 function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
     const R = (4 * height * height + spread * spread) / (8 * height);
@@ -123,7 +125,7 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
         <div class="card">
-            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
         </div>
     </div>`;
     if (index >= selfCards.children.length) {
@@ -131,9 +133,11 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     } else {
         selfCards.insertBefore(htmlToElement(cardDOM), selfCards.children[index]);
     }
-    const cardElement = selfCards.children[index]
+    const cardElement = selfCards.children[index];
+    const innerCardElement = cardElement.children[0];
 
-    cardElement.addEventListener('pointermove', e => {
+    // card position updates
+    cardElement.addEventListener('pointerenter', e => {
         let cardContainers = document.querySelectorAll('.card-container');
         cardContainers = [...cardContainers].reverse();
         const index = Array.prototype.indexOf.call(cardContainers, cardElement);
@@ -148,6 +152,24 @@ function addSelfCard(index = 0, cardName = null, update = true) {
         updateCardPositions();
     });
 
+    // card 3d updates
+    innerCardElement.addEventListener('pointermove', e => {
+        const cardRect = innerCardElement.getBoundingClientRect()
+        const centerX = (cardRect.left + cardRect.right) / 2;
+        const centerY = (cardRect.top + cardRect.bottom) / 2;
+
+        const [deltaX, deltaY] = [e.clientX - centerX, e.clientY - centerY];
+
+        const angX = -Math.sign(deltaY) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaY, zDepth]);
+        const angY = Math.sign(deltaX) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaX, zDepth]);
+
+        innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
+    });
+
+    innerCardElement.addEventListener('pointerleave', e => {
+        innerCardElement.style = `--rx:0deg;--ry:0deg;`;
+    });
+
     if (update) updateCardPositions();
 }
 
@@ -156,9 +178,51 @@ function removeSelfCard() {
     updateCardPositions();
 }
 
+// Pile Cards
+
+function addPileCard(cardName = null) {
+    const cardDOM = `
+    <div class="card">
+        <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
+    </div>`;
+    discardPile.appendChild(htmlToElement(cardDOM));
+    const cardElement = discardPile.children[discardPile.children.length - 1];
+    const x = Math.random() * 10 - 5;
+    const y = Math.random() * 10 - 5;
+    const ang = Math.random() * 20 - 10;
+    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`
+}
+
+const userNickname = document.getElementById('user-nickname');
+const userIcon = document.getElementById('user-icon');
+const turnsList = document.getElementById('turns-list');
+const turnListUsers = document.getElementById('users-container')
+
+userNickname.textContent = socket.data.userName;
+userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
+
+Object.values(socket.roomData.usersData).forEach((user, index) => {
+    const userDOM = `
+        <div class="player-info" id="${user.userId}-player-info">
+          <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
+          <h2 class="player-nickname">${user.userName}</h2>
+          <div class="player-cards-count">6</div>
+        </div>`;
+
+    turnListUsers.appendChild(htmlToElement(userDOM))
+});
+
+const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+
+// rest of socket stuff
+socket.on('next turn', data => {
+    addPileCard(data.card);
+    console.log(parseWithSets(data.roomData));
+});
+
 socket.emit(
-    (socket.joinType != 'join' ? 'fetch cards' : 'draw cards'),
-    (socket.joinType != 'join' ? {} : {
+    (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
+    (socket.joinType == 'rejoin' ? {} : {
         count: 7, tillColor: null, grantUser: socket.data.userId,
     }),
     (result) => {
@@ -169,10 +233,18 @@ socket.emit(
 );
 setTimeout(() => {
     updateCardPositions();
-}, 100);
+}, 100 + totaltAnimationTime);
 
 if (socket.joinType == 'join') {
-
+    if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
+        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
+            (result) => {
+                socket.emit('throw card', { card: result[0] });
+            }
+        );
+    }
 } else {
-
+    socket.roomData.lastPileCards.forEach(card => {
+        addPileCard(card);
+    });
 }
