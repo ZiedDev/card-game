@@ -90,7 +90,13 @@ h1 {
     flex-direction: column;
 }
 
-.start-button {
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.start-button,
+.invite-button {
     cursor: pointer;
     font-weight: 800;
     font-size: 18pt;
@@ -104,9 +110,37 @@ h1 {
     transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
 }
 
+.invite-button {
+    background-color: var(--accent-green-alt);
+    position: relative;
+}
+
+.invite-button svg {
+    position: absolute;
+    font-weight: 900;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 250ms ease;
+}
+
+.invite-button-copy svg {
+    opacity: 1;
+}
+
 .start-button:active {
     background-color: var(--accent-green-darker);
     border-top: inset var(--gray) 0.5rem;
+}
+
+.invite-button:active {
+    background-color: var(--accent-green-alt-darker);
+    border-top: inset var(--gray) 0.5rem;
+}
+
+.start-button:disabled {
+    display: none;
 }
 
 .select-container {
