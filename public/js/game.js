@@ -197,6 +197,14 @@ function addPileCard(cardName = null) {
     }
 }
 
+function updateTurnIndicator(index) {
+    const turnIndicator = document.getElementById('turn-indicator');
+    const player = document.querySelectorAll('.player-info')[index];
+
+    gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75,.06,.32,1.83") });
+    player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
+}
+
 const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
 const turnsList = document.getElementById('turns-list');
@@ -216,13 +224,25 @@ Object.values(socket.roomData.usersData).forEach((user, index) => {
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
 
-const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
 // rest of socket stuff
 socket.on('next turn', data => {
     socket.roomData = parseWithSets(data.roomData);
     addPileCard(data.card);
+
+    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        playerInfo.classList.remove('turn');
+        if (playerInfo == nextTurnPlayerInfo) {
+            updateTurnIndicator(index);
+            nextTurnPlayerInfo.classList.add('turn');
+        }
+    })
 });
+
+
+// initialization and main
+const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
@@ -251,13 +271,4 @@ if (socket.joinType == 'join') {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card);
     });
-}
-
-
-function updateTurnIndicator(index) {
-    const turnIndicator = document.getElementById('turn-indicator');
-    const player = document.querySelectorAll('.player-info')[index];
-
-    gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75, 0, .25, 1.25") });
-    player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
 }
