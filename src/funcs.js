@@ -37,6 +37,10 @@ class Pair {
     }
 }
 
+function sumMap(map) {
+    return Array.from(map.values()).reduce((a, b) => a + b, 0);
+}
+
 function weightedRandomChoice(map) {
     const keys = Array.from(map.keys());
     const cumWeights = Array.from(map.values()).reduce((acc, value) => {
@@ -58,6 +62,7 @@ module.exports = {
     stringifyWithSets,
     parseWithSets,
     Pair,
+    sumMap,
     weightedRandomChoice,
     randomChoice,
 }

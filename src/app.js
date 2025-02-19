@@ -13,6 +13,7 @@ const { generateRandomString,
     stringifyWithSets,
     parseWithSets,
     Pair,
+    sumMap,
     weightedRandomChoice,
     randomChoice,
 } = require('./funcs');
@@ -99,7 +100,7 @@ app.post('/createRoom', (req, res) => {
         // not sended to client
         usersCards: new Map(),
         availableDeck: new Map(),
-        discardPile: new Map(),
+        discardDeck: new Map(),
     });
 
     res.send(JSON.stringify(roomCode));
@@ -314,6 +315,11 @@ io.on('connection', socket => {
         if (roomsData.get(roomCode).lastPileCards.length > maxPileSize) {
             roomsData.get(roomCode).lastPileCards.shift();
         }
+
+        roomsData.get(roomCode).discardDeck.set(
+            data.card,
+            roomsData.get(roomCode).discardDeck.has(data.card) ? roomsData.get(roomCode).discardDeck.get(data.card) - 1 : 1
+        )
 
         let nextUser = roomsData.get(roomCode).userIterator.next().value;
         if (!nextUser) {

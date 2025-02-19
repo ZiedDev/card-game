@@ -190,7 +190,11 @@ function addPileCard(cardName = null) {
     const x = Math.random() * 10 - 5;
     const y = Math.random() * 10 - 5;
     const ang = Math.random() * 20 - 10;
-    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`
+    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+
+    if (discardPile.children.length > socket.roomData.lastPileCards.length) {
+        discardPile.removeChild(discardPile.children[0]);
+    }
 }
 
 const userNickname = document.getElementById('user-nickname');
@@ -216,8 +220,8 @@ const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durati
 
 // rest of socket stuff
 socket.on('next turn', data => {
+    socket.roomData = parseWithSets(data.roomData);
     addPileCard(data.card);
-    console.log(parseWithSets(data.roomData));
 });
 
 socket.emit(
