@@ -91,3 +91,116 @@ body {
     background-color: var(--accent-green-darker);
     border-top: inset var(--gray) 0.5rem;
 }
+
+.customize-button {
+    width: 6rem;
+    height: 6rem;
+
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+
+    border-radius: 100%;
+    border: 0;
+    cursor: pointer;
+    transition: background-color 25ms ease, border-top 50ms ease, transform 350ms cubic-bezier(0.75, 0, 0.25, 1.25);
+}
+
+.customize-button:active {
+    border-top: inset var(--gray) 0.5rem;
+    background-color: var(--gray-darker);
+}
+
+.customize-button-open {
+    transform: scale(0);
+}
+
+.customization-menu {
+    position: fixed;
+    background-color: aliceblue;
+
+    display: grid;
+    grid-template-rows: 3rem 16rem 3rem auto;
+    gap: 2rem;
+
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 2rem;
+
+    margin: 4rem;
+    padding: 2rem;
+
+    transform-origin: calc(100vw - 8rem) 0rem;
+    transform: scale(0);
+    transition: transform 350ms cubic-bezier(0.75, 0, 0.25, 1.25);
+}
+
+.customization-menu h2 {
+    height: 3rem;
+    margin: 0;
+    font-weight: 900;
+    font-size: 26pt;
+}
+
+.customization-menu-open {
+    transform: scale(1);
+}
+
+.card-style-container {
+    width: 15rem;
+    aspect-ratio: 1 / 1;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+
+    background-color: var(--font);
+
+    cursor: pointer;
+    border: 0;
+    outline: 0;
+    transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
+}
+
+
+.card-style-container:active {
+    border-top: inset #000 0.5rem;
+    background-color: var(--font);
+}
+
+.card-border {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.card-border .card-border-input {
+    height: 2rem;
+    width: 2rem;
+}
+
+.card-styles {
+    display: flex;
+    gap: 1rem;
+}
+
+.confirm-customization-button {
+    align-self: end;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 16pt;
+    background-color: var(--accent-green);
+    border-radius: 5rem;
+    margin-top: 2rem;
+    height: 3.916rem;
+    width: 10rem;
+    margin: 2rem auto 0 auto;
+    border: 0;
+    outline: 0;
+    transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
+}
+
+.confirm-customization-button:active {
+    background-color: var(--accent-green-darker);
+    border-top: inset var(--gray) 0.5rem;
+}
