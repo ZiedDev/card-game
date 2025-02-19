@@ -210,8 +210,4 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
             });
         }, totaltAnimationTime);
     });
-
-    socket.on('next turn', data => {
-        console.log(parseWithSets(data));
-    });
 })();

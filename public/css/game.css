@@ -43,7 +43,7 @@ body {
     inherits: false;
 }
 
-.card-container {
+.self-cards .card-container {
     user-select: none;
     --x: 0px;
     --y: 0px;
@@ -64,7 +64,7 @@ body {
     transition: --x 0.3s, --y 0.3s, --ang 0.3s;
 }
 
-.card-container::after {
+.self-cards .card-container::after {
     content: '';
     position: absolute;
     top: 100%;
@@ -91,7 +91,7 @@ body {
     inherits: false;
 }
 
-.card {
+.self-cards .card {
     user-select: none;
     box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
@@ -106,11 +106,11 @@ body {
     transition: --rx 0.5s, --ry 0.5s, --rz 0.5s;
 }
 
-.card:hover {
+.self-cards .card:hover {
     transition: none;
 }
 
-.card img {
+.self-cards .card img {
     user-select: none;
 }
 
@@ -182,10 +182,23 @@ body {
 }
 
 .discard-pile {
+    position: relative;
     height: 10rem;
     aspect-ratio: 2 / 3;
     box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
+}
+
+.discard-pile .card {
+    --x: inherit;
+    --y: inherit;
+    --ang: inherit;
+    position: absolute;
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
+    transform: rotate(var(--ang));
+    translate: var(--x) var(--y);
 }
 
 .turns-list {
@@ -237,6 +250,7 @@ body {
 .turns-list .player-info.away {
     box-shadow: inset 0 0 10px 1px rgb(255, 68, 65);
 }
+
 .turns-list .player-info.away .player-icon {
     filter: grayscale(1);
 }

@@ -93,7 +93,7 @@ app.post('/createRoom', (req, res) => {
             groundCard: null,
             direction: 'cw',
         },
-        lastPileCards: new Set(),
+        lastPileCards: [],
         userIterator: null,
 
         // not sended to client
@@ -307,14 +307,12 @@ io.on('connection', socket => {
 
     socket.on('throw card', data => {
         let roomCode = socketsData.get(socket.id).roomCode;
-        console.log(socketsData.get(socket.id).userName, roomsData.get(roomCode).gameData.currentPlayer);
 
         roomsData.get(roomCode).gameData.groundCard = data.card;
 
-        roomsData.get(roomCode).lastPileCards.add(data.card);
+        roomsData.get(roomCode).lastPileCards.push(data.card);
         if (roomsData.get(roomCode).lastPileCards.length > maxPileSize) {
-            const first = roomsData.get(roomCode).lastPileCards.values().next().value;
-            roomsData.get(roomCode).lastPileCards.remove(first);
+            roomsData.get(roomCode).lastPileCards.shift();
         }
 
         let nextUser = roomsData.get(roomCode).userIterator.next().value;
@@ -329,7 +327,10 @@ io.on('connection', socket => {
 
         // reverse iterator if reverse
 
-        io.to(roomCode).emit('next turn', stringifyWithSets(roomsData.get(roomCode)));
+        io.to(roomCode).emit('next turn', {
+            roomData: stringifyWithSets(roomsData.get(roomCode)),
+            card: data.card,
+        });
     });
 
     socket.on('test', () => {

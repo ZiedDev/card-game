@@ -58,6 +58,7 @@ const spreadParams = {
 }
 const zDepth = 200;
 const selfCards = document.getElementById('self-cards');
+const discardPile = document.getElementById('discard-pile');
 
 function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
     const R = (4 * height * height + spread * spread) / (8 * height);
@@ -176,6 +177,22 @@ function removeSelfCard() {
     selfCards.removeChild(selfCards.children[Math.floor(Math.random() * selfCards.children.length)]);
     updateCardPositions();
 }
+
+// Pile Cards
+
+function addPileCard(cardName = null) {
+    const cardDOM = `
+    <div class="card">
+        <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
+    </div>`;
+    discardPile.appendChild(htmlToElement(cardDOM));
+    const cardElement = discardPile.children[discardPile.children.length - 1];
+    const x = Math.random() * 10 - 5;
+    const y = Math.random() * 10 - 5;
+    const ang = Math.random() * 20 - 10;
+    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`
+}
+
 const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
 const turnsList = document.getElementById('turns-list');
@@ -197,6 +214,12 @@ Object.values(socket.roomData.usersData).forEach((user, index) => {
 
 const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
+// rest of socket stuff
+socket.on('next turn', data => {
+    addPileCard(data.card);
+    console.log(parseWithSets(data.roomData));
+});
+
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
     (socket.joinType == 'rejoin' ? {} : {
@@ -213,15 +236,15 @@ setTimeout(() => {
 }, 100 + totaltAnimationTime);
 
 if (socket.joinType == 'join') {
-
+    if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
+        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
+            (result) => {
+                socket.emit('throw card', { card: result[0] });
+            }
+        );
+    }
 } else {
-
-}
-
-if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
-    socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
-        (result) => {
-            socket.emit('throw card', { card: result[0] });
-        }
-    );
+    socket.roomData.lastPileCards.forEach(card => {
+        addPileCard(card);
+    });
 }
