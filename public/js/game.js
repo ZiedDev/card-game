@@ -252,3 +252,12 @@ if (socket.joinType == 'join') {
         addPileCard(card);
     });
 }
+
+
+function updateTurnIndicator(index) {
+    const turnIndicator = document.getElementById('turn-indicator');
+    const player = document.querySelectorAll('.player-info')[index];
+
+    gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75, 0, .25, 1.25") });
+    player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
+}
