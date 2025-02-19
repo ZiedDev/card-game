@@ -174,9 +174,11 @@ Object.values(socket.roomData.usersData).forEach((user, index) => {
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
 
+const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+
 socket.emit(
-    (socket.joinType != 'join' ? 'fetch cards' : 'draw cards'),
-    (socket.joinType != 'join' ? {} : {
+    (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
+    (socket.joinType == 'rejoin' ? {} : {
         count: 7, tillColor: null, grantUser: socket.data.userId,
     }),
     (result) => {
@@ -187,7 +189,7 @@ socket.emit(
 );
 setTimeout(() => {
     updateCardPositions();
-}, 100);
+}, 100 + totaltAnimationTime);
 
 if (socket.joinType == 'join') {
 

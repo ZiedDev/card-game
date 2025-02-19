@@ -194,7 +194,7 @@ function animateCurtains(isStart = true, { numberOfCurtains = 5, durationPerCurt
     // removing the curtain after animation
     setTimeout(() => {
         curtainsContainer.parentElement.removeChild(curtainsContainer);
-    }, totalAnimationTime + 100);
+    }, totalAnimationTime + 500);
 
     return totalAnimationTime;
 }
