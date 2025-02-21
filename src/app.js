@@ -208,7 +208,7 @@ io.on('connection', socket => {
 
         roomsData.get(data.roomCode).usersData[data.userId] = data;
         if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
-            roomsData.get(data.roomCode).usersCards.set(data.userId, new Set());
+            roomsData.get(data.roomCode).usersCards.set(data.userId, []);
         }
         if (roomsData.get(data.roomCode).owner == data.userId) {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
@@ -293,7 +293,7 @@ io.on('connection', socket => {
         }
         if (params.grantUser) {
             result.forEach(card => {
-                roomsData.get(roomCode).usersCards.get(params.grantUser).add(card);
+                roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
             });
         }
         callback(result);
@@ -303,11 +303,20 @@ io.on('connection', socket => {
         let socketData = socketsData.get(socket.id);
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
 
-        callback(Array.from(result));
+        callback(result);
     });
 
     socket.on('throw card', data => {
         let roomCode = socketsData.get(socket.id).roomCode;
+
+        if (data.remUser) {
+            const index = roomsData.get(roomCode).usersCards.get(data.remUser).indexOf(data.card);
+            if (index > -1) {
+                roomsData.get(roomCode).usersCards.get(data.remUser).splice(index, 1);
+            } else {
+                console.log(`ERROR ${data.remUser} doesnt have card ${data.card} in [${roomsData.get(roomCode).usersCards.get(data.remUser)}]`)
+            }
+        }
 
         roomsData.get(roomCode).gameData.groundCard = data.card;
 

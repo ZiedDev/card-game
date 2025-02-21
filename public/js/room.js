@@ -73,6 +73,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
     socket.emit('join room', socket.data);
 
     socket.joinType = roomResponse;
+    socket.selfCards = []
 
 
     socket.on('init roomData', data => {

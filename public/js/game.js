@@ -173,8 +173,9 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     if (update) updateCardPositions();
 }
 
-function removeSelfCard() {
-    selfCards.removeChild(selfCards.children[Math.floor(Math.random() * selfCards.children.length)]);
+function removeSelfCard(cardName = null) {
+    const index = cardName ? socket.selfCards.indexOf(cardName) : Math.floor(Math.random() * selfCards.children.length);
+    selfCards.removeChild(selfCards.children[index]);
     updateCardPositions();
 }
 
@@ -253,6 +254,7 @@ socket.emit(
         result.forEach(card => {
             addSelfCard(0, card, false);
         });
+        socket.selfCards = result.reverse();
     }
 );
 setTimeout(() => {
@@ -263,7 +265,7 @@ if (socket.joinType == 'join') {
     if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
         socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
             (result) => {
-                socket.emit('throw card', { card: result[0] });
+                socket.emit('throw card', { card: result[0], remUser: null });
             }
         );
     }
