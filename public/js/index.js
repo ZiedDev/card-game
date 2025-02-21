@@ -69,6 +69,7 @@ userImageReload.addEventListener('click', e => {
 const customizeButton = document.getElementById('customize-button');
 const customizationMenu = document.getElementById('customization-menu');
 const confirmCustomizationButton = document.getElementById('confirm-customization-button');
+const cardBorderInput = document.getElementById('card-border-input');
 
 customizeButton.addEventListener('click', e => {
     customizationMenu.classList.add('customization-menu-open');
@@ -80,4 +81,8 @@ confirmCustomizationButton.addEventListener('click', e => {
     customizationMenu.classList.remove('customization-menu-open');
     customizeButton.classList.remove('customize-button-open');
     customizationMenu.style = `transition: transform 350ms cubic-bezier(0.75, 0, 0.25, 1);`;
+});
+
+cardBorderInput.addEventListener('change', e => {
+    userIsCardBorder.val = cardBorderInput.checked;
 });
