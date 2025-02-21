@@ -211,10 +211,11 @@ function isCardThrowValid(cardName) {
 const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
 const turnsList = document.getElementById('turns-list');
-const turnListUsers = document.getElementById('users-container')
+const turnListUsers = document.getElementById('users-container');
 
 userNickname.textContent = socket.data.userName;
 userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
+
 
 Object.values(socket.roomData.usersData).forEach((user, index) => {
     const userDOM = `
@@ -226,7 +227,7 @@ Object.values(socket.roomData.usersData).forEach((user, index) => {
 
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
-
+turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
 
 // rest of socket stuff
 socket.on('next turn', data => {
