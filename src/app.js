@@ -4,6 +4,7 @@ const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 const maxPileSize = process.env.MAX_PILE_SIZE = process.env.MAX_PILE_SIZE || 10;
+const inactiveTurnLimit = process.env.INACTIVE_TURN_LIMIT = process.env.INACTIVE_TURN_LIMIT || 10 * 1000 // 10secs;
 
 // library imports
 const express = require('express');
@@ -86,13 +87,17 @@ app.post('/createRoom', (req, res) => {
 
         users: new Set(),
         rejoinableUsers: new Set(),
+        permaUserSet: null,
         usersData: {},
         gamePreferences: {},
 
         gameData: {
-            currentPlayer: null,
-            groundCard: null,
             direction: 'cw',
+            currentPlayer: null,
+            prevGroundCard: null,
+            groundCard: null,
+            drawSum: 0,
+            wildColor: null,
         },
         lastPileCards: [],
         userIterator: null,
@@ -227,9 +232,11 @@ io.on('connection', socket => {
         let roomCode = socketsData.get(socket.id).roomCode;
 
         roomsData.get(roomCode).started = true;
+        roomsData.get(roomCode).permaUserSet = new Set(roomsData.get(roomCode).users);
+
         const selectedUser = randomChoice(roomsData.get(roomCode).users);
         roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
-        roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
+        roomsData.get(roomCode).userIterator = roomsData.get(roomCode).permaUserSet.values();
         while (roomsData.get(roomCode).userIterator.next().value != selectedUser) { }
 
         // init deck
@@ -306,7 +313,7 @@ io.on('connection', socket => {
         callback(result);
     });
 
-    socket.on('throw card', data => {
+    const throwCard = data => {
         let roomCode = socketsData.get(socket.id).roomCode;
 
         if (data.remUser) {
@@ -318,6 +325,7 @@ io.on('connection', socket => {
             }
         }
 
+        roomsData.get(roomCode).gameData.prevGroundCard = roomsData.get(roomCode).gameData.groundCard;
         roomsData.get(roomCode).gameData.groundCard = data.card;
 
         roomsData.get(roomCode).lastPileCards.push(data.card);
@@ -332,21 +340,34 @@ io.on('connection', socket => {
 
         let nextUser = roomsData.get(roomCode).userIterator.next().value;
         if (!nextUser) {
-            roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
+            roomsData.get(roomCode).userIterator = roomsData.get(roomCode).permaUserSet.values();
             nextUser = roomsData.get(roomCode).userIterator.next().value;
         }
         roomsData.get(roomCode).gameData.currentPlayer = nextUser;
 
+        // handle disconnected user
+        if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
+            setTimeout(() => {
+                // play valid instead
+                throwCard({
+                    card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
+                    remUser: nextUser,
+                });
+            }, inactiveTurnLimit)
+        }
 
         // handle card specific things
 
+        // update wildColor if wild
         // reverse iterator if reverse
+        // add to drawSum if draw
 
         io.to(roomCode).emit('next turn', {
             roomData: stringifyWithSets(roomsData.get(roomCode)),
             card: data.card,
         });
-    });
+    }
+    socket.on('throw card', throwCard);
 
     socket.on('test', () => {
         console.log('TEST:');
