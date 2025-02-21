@@ -173,8 +173,7 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     if (update) updateCardPositions();
 }
 
-function removeSelfCard(cardName = null) {
-    const index = cardName ? socket.selfCards.indexOf(cardName) : Math.floor(Math.random() * selfCards.children.length);
+function removeSelfCard(index) {
     selfCards.removeChild(selfCards.children[index]);
     updateCardPositions();
 }

@@ -100,9 +100,9 @@ app.post('/createRoom', (req, res) => {
             wildColor: null,
         },
         lastPileCards: [],
-        userIterator: null,
-
+        
         // not sended to client
+        userIterator: null,
         usersCards: new Map(),
         availableDeck: new Map(),
         discardDeck: new Map(),
