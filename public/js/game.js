@@ -180,7 +180,6 @@ function removeSelfCard(cardName = null) {
 }
 
 // Pile Cards
-
 function addPileCard(cardName = null) {
     const cardDOM = `
     <div class="card">
@@ -204,6 +203,10 @@ function updateTurnIndicator(index) {
 
     gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75,.06,.32,1.83") });
     player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
+}
+
+function isCardThrowValid(cardName) {
+
 }
 
 const userNickname = document.getElementById('user-nickname');
@@ -238,7 +241,7 @@ socket.on('next turn', data => {
             updateTurnIndicator(index);
             nextTurnPlayerInfo.classList.add('turn');
         }
-    })
+    });
 });
 
 
@@ -272,5 +275,13 @@ if (socket.joinType == 'join') {
 } else {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card);
+    });
+    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        playerInfo.classList.remove('turn');
+        if (playerInfo == nextTurnPlayerInfo) {
+            updateTurnIndicator(index);
+            nextTurnPlayerInfo.classList.add('turn');
+        }
     });
 }

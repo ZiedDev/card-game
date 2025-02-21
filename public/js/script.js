@@ -28,6 +28,18 @@ class StoredValue {
 }
 
 const gamePreferenceOptions = {
+    "Jump-in": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Stack draw-2 and draw-4 cards": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Continue to Draw Until You Can Play": {
+        options: ['enable', 'maximum 2 cards'],
+        default: 'maximum 2 cards',
+    },
     "Number of decks": {
         options: ['1', '2', '3'],
         default: '1',

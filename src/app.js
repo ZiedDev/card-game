@@ -186,6 +186,18 @@ io.on('connection', socket => {
             );
             if (roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
+                if (roomsData.get(roomCode).gameData.currentPlayer == socketData.userId) {
+                    setTimeout(() => {
+                        if (roomsData.get(roomCode).rejoinableUsers.has(socketData.userId)) {
+                            // play valid instead
+                            throwCard({
+                                roomCode,
+                                card: randomChoice(roomsData.get(roomCode).usersCards.get(socketData.userId)),
+                                remUser: socketData.userId,
+                            });
+                        }
+                    }, inactiveTurnLimit);
+                }
             } else {
                 delete roomsData.get(roomCode).usersData[socketData.userId];
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
@@ -314,7 +326,7 @@ io.on('connection', socket => {
     });
 
     const throwCard = data => {
-        let roomCode = socketsData.get(socket.id).roomCode;
+        let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
 
         if (data.remUser) {
             const index = roomsData.get(roomCode).usersCards.get(data.remUser).indexOf(data.card);
@@ -348,12 +360,14 @@ io.on('connection', socket => {
         // handle disconnected user
         if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
             setTimeout(() => {
-                // play valid instead
-                throwCard({
-                    card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
-                    remUser: nextUser,
-                });
-            }, inactiveTurnLimit)
+                if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
+                    // play valid instead
+                    throwCard({
+                        card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
+                        remUser: nextUser,
+                    });
+                }
+            }, inactiveTurnLimit);
         }
 
         // handle card specific things
