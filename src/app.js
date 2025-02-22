@@ -328,6 +328,10 @@ io.on('connection', socket => {
     const throwCard = data => {
         let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
 
+        if (data.jumpIn && data.remUser) {
+            iteratorFuncs.set(roomsData.get(roomCode), data.remUser);
+        }
+
         // if remove from a specific user
         if (data.remUser) {
             const index = roomsData.get(roomCode).usersCards.get(data.remUser).indexOf(data.card);
@@ -360,6 +364,12 @@ io.on('connection', socket => {
         // update wildColor if wild
 
         // add to drawSum if draw
+        // if (cardParts[0] == 'draw') {
+        //     roomsData.get(roomCode).gameData.drawSum += 2;
+        // }
+        // if (cardParts[0] == 'draw4') {
+        //     roomsData.get(roomCode).gameData.drawSum += 4;
+        // }
 
         // increment user
         let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
@@ -384,7 +394,7 @@ io.on('connection', socket => {
         if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
             setTimeout(() => {
                 if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
-                    // play valid instead
+                    // play valid instead       
                     throwCard({
                         card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
                         remUser: nextUser,

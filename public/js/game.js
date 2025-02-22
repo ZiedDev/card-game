@@ -205,7 +205,13 @@ function updateTurnIndicator(index) {
 }
 
 function isCardThrowValid(cardName) {
-
+    const isSelfTurn = socket.roomData.gameData.currentPlayer == socket.data.userId;
+    const cardParts = cardName.split('_');
+    const prevGroundCard = socket.roomData.gameData.prevGroundCard;
+    const groundCard = socket.roomData.gameData.groundCard;
+    const drawSum = socket.roomData.gameData.drawSum;
+    const wildColor = socket.roomData.gameData.wildColor;
+    const preferences = socket.roomData.gamePreferences;
 }
 
 const userNickname = document.getElementById('user-nickname');

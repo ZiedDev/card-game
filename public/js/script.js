@@ -36,6 +36,10 @@ const gamePreferenceOptions = {
         options: ['enable', 'disable'],
         default: 'enable',
     },
+    "draw-2 and draw-4 skips": {
+        options: ['skip', 'do not skip'],
+        default: 'skip',
+    },
     "Continue to Draw Until You Can Play": {
         options: ['enable', 'maximum 2 cards'],
         default: 'maximum 2 cards',
