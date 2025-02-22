@@ -341,13 +341,25 @@ io.on('connection', socket => {
         // handle card specific things
         const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
         const cardParts = data.card.split('_');
-        let direction = roomsData.get(roomCode).gameData.direction
 
         // reverse iterator if reverse
         if (cardParts[0] == 'reverse') {
-            direction = direction == 'cw' ? 'acw' : 'cw';
+            roomsData.get(roomCode).gameData.direction = roomsData.get(roomCode).gameData.direction == 'cw' ? 'acw' : 'cw';
             iteratorFuncs.set(roomsData.get(roomCode), prevUser);
+
+            if (roomsData.get(roomCode).permaUserSet.size == 2) {
+                iteratorFuncs.get(roomsData.get(roomCode));
+            }
         }
+
+        // extra increment if skip
+        if (cardParts[0] == 'skip') {
+            iteratorFuncs.get(roomsData.get(roomCode));
+        }
+
+        // update wildColor if wild
+
+        // add to drawSum if draw
 
         // increment user
         let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
@@ -380,10 +392,6 @@ io.on('connection', socket => {
                 }
             }, inactiveTurnLimit);
         }
-
-        // update wildColor if wild
-
-        // add to drawSum if draw
 
         io.to(roomCode).emit('next turn', {
             roomData: stringifyWithSets(roomsData.get(roomCode)),

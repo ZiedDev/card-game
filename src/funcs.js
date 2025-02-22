@@ -59,7 +59,7 @@ function randomChoice(set) {
 
 const iteratorFuncs = {
     reset: (roomData) => {
-        roomData.userIterator = new Set(roomData.gameData.direction == 'cw' ? Array.from(roomData.permaUserSet) : Array.from(set.permaUserSet).reverse()).values();
+        roomData.userIterator = new Set(roomData.gameData.direction == 'cw' ? Array.from(roomData.permaUserSet) : Array.from(roomData.permaUserSet).reverse()).values();
     },
     set: (roomData, value) => {
         iteratorFuncs.reset(roomData);
