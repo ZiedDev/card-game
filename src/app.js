@@ -328,6 +328,7 @@ io.on('connection', socket => {
     const throwCard = data => {
         let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
 
+        // if remove from a specific user
         if (data.remUser) {
             const index = roomsData.get(roomCode).usersCards.get(data.remUser).indexOf(data.card);
             if (index > -1) {
@@ -337,6 +338,12 @@ io.on('connection', socket => {
             }
         }
 
+const prevUser = roomsData.get(roomCode).gameData.currentPlayer; 
+const cardParts = data.card.split('_');
+// reverse iterator if reverse
+     if (cardParts[0]=='reverse') {
+        roomsData.get(roomCode).userIterator = new Set(Array. from(roomsData.get(roomCode).permaUserSet).reverse()).values();
+        while (roomsData.get(roomCode).userIterator.next().value != prevUser) { }} 
         roomsData.get(roomCode).gameData.prevGroundCard = roomsData.get(roomCode).gameData.groundCard;
         roomsData.get(roomCode).gameData.groundCard = data.card;
 
@@ -349,7 +356,7 @@ io.on('connection', socket => {
             data.card,
             roomsData.get(roomCode).discardDeck.has(data.card) ? roomsData.get(roomCode).discardDeck.get(data.card) - 1 : 1
         )
-
+  
         let nextUser = roomsData.get(roomCode).userIterator.next().value;
         if (!nextUser) {
             roomsData.get(roomCode).userIterator = roomsData.get(roomCode).permaUserSet.values();
@@ -373,7 +380,7 @@ io.on('connection', socket => {
         // handle card specific things
 
         // update wildColor if wild
-        // reverse iterator if reverse
+
         // add to drawSum if draw
 
         io.to(roomCode).emit('next turn', {
