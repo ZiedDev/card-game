@@ -57,6 +57,24 @@ function randomChoice(set) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const iteratorFuncs = {
+    reset: (roomData) => {
+        roomData.userIterator = new Set(roomData.gameData.direction == 'cw' ? Array.from(roomData.permaUserSet) : Array.from(set.permaUserSet).reverse()).values();
+    },
+    set: (roomData, value) => {
+        iteratorFuncs.reset(roomData);
+        while (roomData.userIterator.next().value != value) { };
+    },
+    get: (roomData) => {
+        let next = roomData.userIterator.next().value;
+        if (!next) {
+            iteratorFuncs.reset(roomData);
+            next = roomData.userIterator.next().value;
+        }
+        return next;
+    },
+};
+
 module.exports = {
     generateRandomString,
     stringifyWithSets,
@@ -65,4 +83,5 @@ module.exports = {
     sumMap,
     weightedRandomChoice,
     randomChoice,
+    iteratorFuncs,
 }

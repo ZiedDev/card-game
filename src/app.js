@@ -17,6 +17,7 @@ const { generateRandomString,
     sumMap,
     weightedRandomChoice,
     randomChoice,
+    iteratorFuncs,
 } = require('./funcs');
 const cardCount = require('./uno_card_count.json');
 
@@ -100,7 +101,7 @@ app.post('/createRoom', (req, res) => {
             wildColor: null,
         },
         lastPileCards: [],
-        
+
         // not sended to client
         userIterator: null,
         usersCards: new Map(),
@@ -248,8 +249,7 @@ io.on('connection', socket => {
 
         const selectedUser = randomChoice(roomsData.get(roomCode).users);
         roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
-        roomsData.get(roomCode).userIterator = roomsData.get(roomCode).permaUserSet.values();
-        while (roomsData.get(roomCode).userIterator.next().value != selectedUser) { }
+        iteratorFuncs.set(roomsData.get(roomCode), selectedUser);
 
         // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
@@ -338,12 +338,22 @@ io.on('connection', socket => {
             }
         }
 
-const prevUser = roomsData.get(roomCode).gameData.currentPlayer; 
-const cardParts = data.card.split('_');
-// reverse iterator if reverse
-     if (cardParts[0]=='reverse') {
-        roomsData.get(roomCode).userIterator = new Set(Array. from(roomsData.get(roomCode).permaUserSet).reverse()).values();
-        while (roomsData.get(roomCode).userIterator.next().value != prevUser) { }} 
+        // handle card specific things
+        const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
+        const cardParts = data.card.split('_');
+        let direction = roomsData.get(roomCode).gameData.direction
+
+        // reverse iterator if reverse
+        if (cardParts[0] == 'reverse') {
+            direction = direction == 'cw' ? 'acw' : 'cw';
+            iteratorFuncs.set(roomsData.get(roomCode), prevUser);
+        }
+
+        // increment user
+        let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+
+        // update cards
         roomsData.get(roomCode).gameData.prevGroundCard = roomsData.get(roomCode).gameData.groundCard;
         roomsData.get(roomCode).gameData.groundCard = data.card;
 
@@ -356,13 +366,7 @@ const cardParts = data.card.split('_');
             data.card,
             roomsData.get(roomCode).discardDeck.has(data.card) ? roomsData.get(roomCode).discardDeck.get(data.card) - 1 : 1
         )
-  
-        let nextUser = roomsData.get(roomCode).userIterator.next().value;
-        if (!nextUser) {
-            roomsData.get(roomCode).userIterator = roomsData.get(roomCode).permaUserSet.values();
-            nextUser = roomsData.get(roomCode).userIterator.next().value;
-        }
-        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+
 
         // handle disconnected user
         if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
@@ -376,8 +380,6 @@ const cardParts = data.card.split('_');
                 }
             }, inactiveTurnLimit);
         }
-
-        // handle card specific things
 
         // update wildColor if wild
 
