@@ -62,6 +62,15 @@ const gamePreferenceOptions = {
     },
 }
 
+const currVersion = 1;
+let userVersion = new StoredValue('userVersion', currVersion);
+userVersion.update();
+if (currVersion != userVersion.val) {
+    userVersion.val = currVersion;
+    console.log('restart');
+    _resetUserStorage();
+}
+
 let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
@@ -82,6 +91,7 @@ let userIsCardBorder = new StoredValue('userIsCardBorder', false, self => {
 
 
 console.log(
+    userVersion,
     userId, userName, userPfp, roomCode, userGamePreferences,
     userDeckSkin, userIsCardBorder
 );
