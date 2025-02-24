@@ -56,7 +56,7 @@ const spreadParams = {
     height: 50,
     yOffset: 30,
 }
-const zDepth = 200;
+let zDepth = 200;
 const selfCards = document.getElementById('self-cards');
 const discardPile = document.getElementById('discard-pile');
 
@@ -75,7 +75,7 @@ function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height,
     const y = -1 * ((R + extraRadius) * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4) + yOffset);
     const ang = -1 * (180 / Math.PI) * (theta - (Math.PI / 2));
 
-    return `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+    return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg` };
 }
 
 function updateCardPositions() {
@@ -91,10 +91,20 @@ function updateCardPositions() {
     })[1];;
 
     cardContainers.forEach((cardContainer, index) => {
-        cardContainer.style = calculateCardPos({
+        const pos = calculateCardPos({
             index,
             extraRadius: 0,
         }, spreadParams);
+
+        cardContainer.style.setProperty('--x', pos.x);
+        cardContainer.style.setProperty('--y', pos.y);
+        cardContainer.style.setProperty('--ang', pos.ang);
+        cardContainer.style.setProperty('z-index', 0);
+
+        if (cardContainer.style.getPropertyValue('translate') == 'none') {
+            cardContainer.style.setProperty('translate', 'var(--x) var(--y)');
+            cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+        }
     });
 }
 
@@ -136,21 +146,41 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardElement = selfCards.children[index];
     const innerCardElement = cardElement.children[0];
 
-    // card position updates
-    cardElement.addEventListener('pointerenter', e => {
+    let dragEndTween;
+
+    Draggable.create(cardElement, {
+        onDragStart: function name(pointerEvent) {
+            try {
+                dragEndTween.kill();
+            } catch { }
+            zDepth = 2000;
+            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'var(--x) var(--y)', duration: 0 });
+        },
+        onDragEnd: function (pointerEvent) {
+            zDepth = 200;
+            updateCardPositions();
+            dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
+        },
+    });
+
+    cardElement.addEventListener('pointermove', cardElementPointerMove);
+
+    function cardElementPointerMove() {
         let cardContainers = document.querySelectorAll('.card-container');
         cardContainers = [...cardContainers].reverse();
         const index = Array.prototype.indexOf.call(cardContainers, cardElement);
 
-        cardElement.style = calculateCardPos({
+        const pos = calculateCardPos({
             index,
             extraRadius: 50,
         }, spreadParams);
-    });
 
-    cardElement.addEventListener('pointerleave', e => {
-        updateCardPositions();
-    });
+        cardElement.style.setProperty('--x', pos.x);
+        cardElement.style.setProperty('--y', pos.y);
+        cardElement.style.setProperty('--ang', pos.ang);
+    }
+
+    cardElement.addEventListener('pointerleave', updateCardPositions);
 
     // card 3d updates
     innerCardElement.addEventListener('pointermove', e => {
