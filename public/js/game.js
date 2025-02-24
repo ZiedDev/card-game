@@ -1,40 +1,3 @@
-// Scrolling thing
-// const cardScrollingDOM = document.getElementById('card-scrolling');
-// const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
-
-// let isDragging = false;
-// let startX = 0;
-
-// cardScrollingDOM.addEventListener('pointermove', e => {
-
-// });
-
-// cardScrollingDOM.addEventListener('pointerdown', e => {
-//     isDragging = true;
-//     startX = e.clientX;
-// });
-
-// document.addEventListener('pointermove', e => {
-//     if (isDragging) {
-//         let deltaX = e.clientX - startX;
-//         let lerpedVal = rangeLerp(
-//             inputValue = deltaX,
-//             inputRangeStart = -cardScrollingWidth,
-//             InputRangeEnd = cardScrollingWidth,
-//             OutputRangeStart = -100,
-//             OutputRangeEnd = 100,
-//             capInput = false,
-//             decimalPlaces = 1
-//         );
-
-//         // console.log(`deltaX: ${deltaX}, lerpedVal: ${lerpedVal}`);
-//     }
-// });
-
-// document.addEventListener('pointerup', e => {
-//     isDragging = false;
-// });
-
 // Self Cards
 const heightDistrib = {
     2: 3,
@@ -153,19 +116,21 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     Draggable.create(cardElement, {
         onDragStart: function (pointerEvent) {
             isDragging = true;
+            zDepth = 2000;
             try {
                 dragEndTween.kill();
             } catch { }
-            zDepth = 2000;
             gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'var(--x) var(--y)', duration: 0 });
         },
         onDragEnd: function (pointerEvent) {
-            console.log(this.hitTest(document.getElementById('discard-pile')));
-
             isDragging = false;
             zDepth = 200;
+            if (this.hitTest(document.getElementById('discard-pile'))) {
+                onThrowingCard(cardElement)
+            } else {
+                dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
+            }
             updateCardPositions();
-            dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
         },
     });
 
@@ -247,9 +212,65 @@ function isCardThrowValid(cardName) {
     const cardParts = cardName.split('_');
     const prevGroundCard = socket.roomData.gameData.prevGroundCard;
     const groundCard = socket.roomData.gameData.groundCard;
+    const groundCardParts = groundCard.split('_');
     const drawSum = socket.roomData.gameData.drawSum;
     const wildColor = socket.roomData.gameData.wildColor;
     const preferences = socket.roomData.gamePreferences;
+
+    if (preferences["Jump-in"] == 'enable' && !isSelfTurn && cardParts[1] != 'wild' && cardName == groundCard) {
+        //jump in rules
+
+        return true;
+    }
+
+    if (!isSelfTurn) {
+        return false;
+    }
+
+    if (groundCardParts[0] == 'draw' || groundCardParts[0] == 'draw4') {
+        // draw-2 and draw-4 
+
+        if (preferences["draw-2 and draw-4 skips"] == 'skip') {
+            // skips
+
+            return false;
+        }
+
+        if (preferences["Stack draw-2 and draw-4 cards"] == 'enabled') {
+            // stack
+
+            // if (alreadyDrown) {
+            //      drawSum = 0
+            // } else {
+
+            // }
+
+            return null;
+        }
+    }
+
+    if (cardParts[1] == 'wild') {
+        // wild card
+
+        return true;
+    }
+
+    if (cardParts[0] == groundCardParts[0] || cardParts[1] == groundCardParts[1]) {
+        // same type or same color
+
+        return true;
+    }
+}
+
+function onThrowingCard(cardElement) {
+    const cardContainers = document.querySelectorAll('.card-container');
+    const index = Array.prototype.indexOf.call(cardContainers, cardElement);
+
+    socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.userId });
+    selfCards.removeChild(cardElement);
+
+    socket.selfCards.splice(index, 1);
+    console.log(index);
 }
 
 const userNickname = document.getElementById('user-nickname');
@@ -298,10 +319,10 @@ socket.emit(
         count: 7, tillColor: null, grantUser: socket.data.userId,
     }),
     (result) => {
-        result.forEach(card => {
-            addSelfCard(0, card, false);
+        result.forEach((card, index) => {
+            addSelfCard(index, card, false);
         });
-        socket.selfCards = result.reverse();
+        socket.selfCards = result;
     }
 );
 setTimeout(() => {
