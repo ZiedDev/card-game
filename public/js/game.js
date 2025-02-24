@@ -1,39 +1,39 @@
 // Scrolling thing
-const cardScrollingDOM = document.getElementById('card-scrolling');
-const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
+// const cardScrollingDOM = document.getElementById('card-scrolling');
+// const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
 
-let isDragging = false;
-let startX = 0;
+// let isDragging = false;
+// let startX = 0;
 
-cardScrollingDOM.addEventListener('pointermove', e => {
+// cardScrollingDOM.addEventListener('pointermove', e => {
 
-});
+// });
 
-cardScrollingDOM.addEventListener('pointerdown', e => {
-    isDragging = true;
-    startX = e.clientX;
-});
+// cardScrollingDOM.addEventListener('pointerdown', e => {
+//     isDragging = true;
+//     startX = e.clientX;
+// });
 
-document.addEventListener('pointermove', e => {
-    if (isDragging) {
-        let deltaX = e.clientX - startX;
-        let lerpedVal = rangeLerp(
-            inputValue = deltaX,
-            inputRangeStart = -cardScrollingWidth,
-            InputRangeEnd = cardScrollingWidth,
-            OutputRangeStart = -100,
-            OutputRangeEnd = 100,
-            capInput = false,
-            decimalPlaces = 1
-        );
+// document.addEventListener('pointermove', e => {
+//     if (isDragging) {
+//         let deltaX = e.clientX - startX;
+//         let lerpedVal = rangeLerp(
+//             inputValue = deltaX,
+//             inputRangeStart = -cardScrollingWidth,
+//             InputRangeEnd = cardScrollingWidth,
+//             OutputRangeStart = -100,
+//             OutputRangeEnd = 100,
+//             capInput = false,
+//             decimalPlaces = 1
+//         );
 
-        // console.log(`deltaX: ${deltaX}, lerpedVal: ${lerpedVal}`);
-    }
-});
+//         // console.log(`deltaX: ${deltaX}, lerpedVal: ${lerpedVal}`);
+//     }
+// });
 
-document.addEventListener('pointerup', e => {
-    isDragging = false;
-});
+// document.addEventListener('pointerup', e => {
+//     isDragging = false;
+// });
 
 // Self Cards
 const heightDistrib = {
@@ -100,6 +100,7 @@ function updateCardPositions() {
         cardContainer.style.setProperty('--y', pos.y);
         cardContainer.style.setProperty('--ang', pos.ang);
         cardContainer.style.setProperty('z-index', 0);
+        cardContainer.style.setProperty('--after-height', '0px');
 
         if (cardContainer.style.getPropertyValue('translate') == 'none') {
             cardContainer.style.setProperty('translate', 'var(--x) var(--y)');
@@ -131,6 +132,8 @@ function getRandomCard() { //temp
     }
 }
 
+let isDragging = false;
+
 function addSelfCard(index = 0, cardName = null, update = true) {
     const cardDOM = `
     <div class="card-container">
@@ -147,9 +150,9 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const innerCardElement = cardElement.children[0];
 
     let dragEndTween;
-
     Draggable.create(cardElement, {
-        onDragStart: function name(pointerEvent) {
+        onDragStart: function (pointerEvent) {
+            isDragging = true;
             try {
                 dragEndTween.kill();
             } catch { }
@@ -157,15 +160,19 @@ function addSelfCard(index = 0, cardName = null, update = true) {
             gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'var(--x) var(--y)', duration: 0 });
         },
         onDragEnd: function (pointerEvent) {
+            console.log(this.hitTest(document.getElementById('discard-pile')));
+
+            isDragging = false;
             zDepth = 200;
             updateCardPositions();
             dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
         },
     });
 
-    cardElement.addEventListener('pointermove', cardElementPointerMove);
+    cardElement.addEventListener('pointermove', (e) => {
+        console.log(isDragging);
+        if (isDragging) return;
 
-    function cardElementPointerMove() {
         let cardContainers = document.querySelectorAll('.card-container');
         cardContainers = [...cardContainers].reverse();
         const index = Array.prototype.indexOf.call(cardContainers, cardElement);
@@ -178,7 +185,8 @@ function addSelfCard(index = 0, cardName = null, update = true) {
         cardElement.style.setProperty('--x', pos.x);
         cardElement.style.setProperty('--y', pos.y);
         cardElement.style.setProperty('--ang', pos.ang);
-    }
+        cardElement.style.setProperty('--after-height', '60px');
+    });
 
     cardElement.addEventListener('pointerleave', updateCardPositions);
 
