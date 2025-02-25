@@ -101,6 +101,7 @@ app.post('/createRoom', (req, res) => {
             wildColor: null,
         },
         lastPileCards: [],
+        lastDeckCardCount: null,
 
         // not sended to client
         userIterator: null,
@@ -315,6 +316,7 @@ io.on('connection', socket => {
                 roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
             });
         }
+        roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, roomsData.get(roomCode).lastDeckCardCount);
         callback(result);
     });
 
@@ -369,7 +371,10 @@ io.on('connection', socket => {
             roomsData.get(roomCode).gamePreferences["draw-2 and draw-4 skips"] == 'skip') {
             io.to(roomCode).emit('draw deck', {
                 user: iteratorFuncs.get(roomsData.get(roomCode)),
-                count: cardParts[0] == 'draw' ? 2 : 4
+                count: cardParts[0] == 'draw' ? 2 : 4,
+                lastDeckCardCount: Math.min(maxPileSize,
+                    roomsData.get(roomCode).lastDeckCardCount - (cardParts[0] == 'draw' ? 2 : 4)
+                ),
             });
         }
         // if (cardParts[0] == 'draw') {

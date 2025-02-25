@@ -307,6 +307,7 @@ socket.on('next turn', data => {
 });
 
 socket.on('draw deck', data => {
+    // update deck count
     if (data.user == socket.data.userId) {
         socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
             (result) => {
@@ -317,6 +318,8 @@ socket.on('draw deck', data => {
                 });
             }
         );
+    } else {
+        // draw other
     }
 });
 
