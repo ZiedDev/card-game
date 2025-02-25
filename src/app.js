@@ -326,6 +326,7 @@ io.on('connection', socket => {
     });
 
     const throwCard = data => {
+        // jumpIn remUser card roomCode
         let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
 
         if (data.jumpIn && data.remUser) {
@@ -363,7 +364,14 @@ io.on('connection', socket => {
 
         // update wildColor if wild
 
-        // add to drawSum if draw
+        // handle draw
+        if ((cardParts[0] == 'draw' || cardParts[0] == 'draw4') &&
+            roomsData.get(roomCode).gamePreferences["draw-2 and draw-4 skips"] == 'skip') {
+            io.to(roomCode).emit('draw deck', {
+                user: iteratorFuncs.get(roomsData.get(roomCode)),
+                count: cardParts[0] == 'draw' ? 2 : 4
+            });
+        }
         // if (cardParts[0] == 'draw') {
         //     roomsData.get(roomCode).gameData.drawSum += 2;
         // }
@@ -396,6 +404,7 @@ io.on('connection', socket => {
                 if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
                     // play valid instead       
                     throwCard({
+                        roomCode,
                         card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
                         remUser: nextUser,
                     });

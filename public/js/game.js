@@ -125,9 +125,8 @@ function addSelfCard(index = 0, cardName = null, update = true) {
         onDragEnd: function (pointerEvent) {
             isDragging = false;
             zDepth = 200;
-            if (this.hitTest(document.getElementById('discard-pile'))) {
-                onThrowingCard(cardElement)
-            } else {
+            const hit = this.hitTest(document.getElementById('discard-pile'))
+            if (!(hit && onThrowingCard(cardElement))) {
                 dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
             }
             updateCardPositions();
@@ -135,7 +134,6 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     });
 
     cardElement.addEventListener('pointermove', (e) => {
-        console.log(isDragging);
         if (isDragging) return;
 
         let cardContainers = document.querySelectorAll('.card-container');
@@ -219,21 +217,18 @@ function isCardThrowValid(cardName) {
 
     if (preferences["Jump-in"] == 'enable' && !isSelfTurn && cardParts[1] != 'wild' && cardName == groundCard) {
         //jump in rules
-
         return true;
     }
 
     if (!isSelfTurn) {
         return false;
     }
+    return true;
 
     if (groundCardParts[0] == 'draw' || groundCardParts[0] == 'draw4') {
         // draw-2 and draw-4 
-
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
-            // skips
-
-            return false;
+            // redundant skip
         }
 
         if (preferences["Stack draw-2 and draw-4 cards"] == 'enabled') {
@@ -265,12 +260,14 @@ function isCardThrowValid(cardName) {
 function onThrowingCard(cardElement) {
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
-
-    socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.userId });
-    selfCards.removeChild(cardElement);
-
-    socket.selfCards.splice(index, 1);
-    console.log(index);
+    if (isCardThrowValid(socket.selfCards[index])) {
+        socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId });
+        selfCards.removeChild(cardElement);
+        socket.selfCards.splice(index, 1);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 const userNickname = document.getElementById('user-nickname');
@@ -307,6 +304,20 @@ socket.on('next turn', data => {
             nextTurnPlayerInfo.classList.add('turn');
         }
     });
+});
+
+socket.on('draw deck', data => {
+    if (data.user == socket.data.userId) {
+        socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
+            (result) => {
+                result.forEach((card) => {
+                    // draw animation
+                    addSelfCard(socket.selfCards.length, card);
+                    socket.selfCards.push(card);
+                });
+            }
+        );
+    }
 });
 
 
