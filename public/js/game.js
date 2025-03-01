@@ -180,6 +180,18 @@ function removeSelfCard(index) {
 }
 
 // Pile Cards
+const drawingDeck = document.getElementById('drawing-deck');
+function updateDeckCards(lastDeckCardCount) {
+    drawingDeck.innerHTML = '';
+    const cardDOM = `
+    <div class="card">
+        <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+    </div>`;
+    for (let i = 0; i < lastDeckCardCount; i++) {
+        discardPile.appendChild(htmlToElement(cardDOM));
+    }
+}
+
 function addPileCard(cardName = null) {
     const cardDOM = `
     <div class="card">
@@ -308,6 +320,7 @@ socket.on('next turn', data => {
 
 socket.on('draw deck', data => {
     // update deck count
+    updateDeckCards(data.lastDeckCardCount);
     if (data.user == socket.data.userId) {
         socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
             (result) => {

@@ -195,6 +195,15 @@ body {
     border-radius: 5pt;
 }
 
+.drawing-deck .card {
+    position: absolute;
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+    border: var(--card-border);
+    border-radius: 5pt;
+    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
+}
+
 .discard-pile .card {
     --x: inherit;
     --y: inherit;
