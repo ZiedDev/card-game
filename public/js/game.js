@@ -377,3 +377,36 @@ if (socket.joinType == 'join') {
         }
     });
 }
+
+const wildColorSelector = document.getElementById('wild-color-selector');
+const colorWheelBg = document.getElementById('color-wheel');
+const wildColorBackdrop = document.getElementById('wild-color-backdrop');
+const colorWheelColors = document.querySelectorAll('.color-wheel .color');
+let animationClear;
+
+function showWildColorSelector() {
+    if (wildColorSelector.classList.contains('hide')) {
+        try {
+            clearTimeout(animationClear);
+        } catch (error) { }
+
+        wildColorSelector.classList.remove('hide');
+
+        gsap.from('.color', { '--scale': 0, duration: 0.5, stagger: 0.12, ease: CustomEase.create("", ".75,.06,.32,1.83") });
+
+        gsap.from(colorWheelBg, { '--bg-scale': 0, duration: 0.35, delay: 0.5, ease: CustomEase.create("", ".75,.06,.32,1.3") });
+
+        gsap.from(wildColorBackdrop, { opacity: 0, duration: 1 });
+
+    } else {
+        gsap.to('.color', { '--scale': 0, duration: 0.5, stagger: 0.12, ease: CustomEase.create("", ".75,.06,.32,1.5") });
+
+        gsap.to(colorWheelBg, { '--bg-scale': 0, duration: 0.35, delay: 0.5, ease: CustomEase.create("", ".75,.06,.32,1.0") });
+
+        gsap.to(wildColorBackdrop, { opacity: 0, duration: 1 });
+
+        animationClear = setTimeout(() => {
+            wildColorSelector.classList.add('hide');
+        }, 1000);
+    }
+}

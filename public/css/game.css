@@ -312,3 +312,117 @@ body {
     border-radius: 1rem;
     padding: 1rem;
 }
+
+.wild-color-selector {
+    z-index: 100;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.color-wheel {
+    --color-1: #acc77e;
+    --color-2: #ebc968;
+    --color-3: #428bca;
+    --color-4: #cb666a;
+
+    --bg-scale: 1;
+
+    position: absolute;
+    width: clamp(10rem, 15vw, 20rem);
+    aspect-ratio: 0.85;
+
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) skewX(-10deg);
+    transform-origin: center;
+
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.color-wheel:before {
+    content: '';
+    z-index: -1;
+    position: absolute;
+    top: -0.5rem;
+    left: -0.5rem;
+
+    transform: scale(var(--bg-scale));
+
+    width: 100%;
+    height: 100%;
+
+    background-color: white;
+    box-sizing: content-box;
+    border: 0.5rem solid white;
+    border-radius: 1.5rem;
+}
+
+.color-wheel .color {
+    --scale: 1;
+    scale: var(--scale);
+    transition: box-shadow 250ms ease, translate 250ms ease, border 250ms ease, transform 250ms ease;
+}
+
+.color-wheel .color:hover {
+    transform: scale(1.05);
+    border: 1rem none;
+}
+
+.color-wheel .color:nth-child(1) {
+    transform-origin: bottom right;
+    background-color: var(--color-1);
+    border-radius: 1rem 0 0 0;
+}
+
+.color-wheel .color:nth-child(1):hover {
+    translate: -10px -10px;
+    box-shadow: 0.5rem 0.5rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.color-wheel .color:nth-child(2) {
+    transform-origin: bottom left;
+    background-color: var(--color-2);
+    border-radius: 0 1rem 0 0;
+}
+
+.color-wheel .color:nth-child(2):hover {
+    translate: 10px -10px;
+    box-shadow: -0.5rem 0.5rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.color-wheel .color:nth-child(3) {
+    transform-origin: top right;
+    background-color: var(--color-3);
+    border-radius: 0 0 0 1rem;
+}
+
+.color-wheel .color:nth-child(3):hover {
+    translate: -10px 10px;
+    box-shadow: 0.5rem -0.5rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.color-wheel .color:nth-child(4) {
+    transform-origin: top left;
+    background-color: var(--color-4);
+    border-radius: 0 0 1rem 0;
+}
+
+.color-wheel .color:nth-child(4):hover {
+    translate: 10px 10px;
+    box-shadow: -0.5rem -0.5rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+.backdrop {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    box-shadow: 0 0 200px rgba(0, 0, 0, 0.9) inset;
+}

@@ -52,3 +52,7 @@ body * {
 .scroll::-webkit-scrollbar-corner {
     background-color: var(--gray)
 }
+
+.hide {
+    display: none;
+}
