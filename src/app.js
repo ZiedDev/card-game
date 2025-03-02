@@ -253,10 +253,6 @@ io.on('connection', socket => {
         roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
         iteratorFuncs.set(roomsData.get(roomCode), selectedUser);
 
-        const selectedGroundCard = drawCards({ count: 1, grantUser: null, tillColor: null, nonWild: true, })
-        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
-        roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
-
         // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
@@ -276,6 +272,10 @@ io.on('connection', socket => {
                 );
             });
         });
+
+        const selectedGroundCard = drawCards({ count: 1, grantUser: null, tillColor: null, nonWild: true, })
+        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
+        roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
 
         io.to(roomCode).emit('start game');
         io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
