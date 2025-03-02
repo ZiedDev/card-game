@@ -77,9 +77,6 @@ const iteratorFuncs = {
 
 function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
     let choice = weightedRandomChoice(roomData.availableDeck);
-    console.log(choice);
-    console.log(roomData);
-    
     
     while (nonWild && choice.split('_')[1] == 'wild') {
         choice = weightedRandomChoice(roomData.availableDeck);

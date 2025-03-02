@@ -154,7 +154,7 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
-            if (!hit) {
+            if (!(hit && onThrowingCard(cardElement))) {
                 dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
             }
             updateCardPositions();
@@ -275,8 +275,57 @@ function toggleWildColorSelector() {
     }
 }
 
+function onThrowingCard(cardElement) {
+    const cardContainers = document.querySelectorAll('.card-container');
+    const index = Array.prototype.indexOf.call(cardContainers, cardElement);
+    let isValid = true;
+    // socket.emit('fetch isValidThrow',
+    //     { card: socket.selfCards[index] },
+    //     (result) => { isValid = result; }
+    // );
+    if (isValid) {
+        socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId });
+        selfCards.removeChild(cardElement);
+        socket.selfCards.splice(index, 1);
+        return true;
+    }
+    return false;
+}
+
 /*----------------------------------------------*/
 // Additional socket functionality
+
+socket.on('next turn', data => {
+    socket.roomData = parseWithSets(data.roomData);
+    addPileCard(data.card);
+
+    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        playerInfo.classList.remove('turn');
+        if (playerInfo == nextTurnPlayerInfo) {
+            updateTurnIndicator(index);
+            nextTurnPlayerInfo.classList.add('turn');
+        }
+    });
+});
+
+socket.on('draw deck', data => {
+    // update deck count
+    updateDeckCards(data.lastDeckCardCount);
+    if (data.user == socket.data.userId) {
+        socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
+            (result) => {
+                result.forEach((card) => {
+                    // draw animation
+                    addSelfCard(socket.selfCards.length, card);
+                    socket.selfCards.push(card);
+                });
+            }
+        );
+    } else {
+        // draw other
+    }
+});
 
 /*----------------------------------------------*/
 // Initialization and main running
@@ -332,7 +381,7 @@ if (socket.joinType == 'join') {
         socket.roomData.lastPileCards.forEach(card => {
             addPileCard(card, socket.roomData.lastPileCards.length);
         });
-    }, 300 + totaltAnimationTime)
+    }, 800 + totaltAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card, socket.roomData.lastPileCards.length);
