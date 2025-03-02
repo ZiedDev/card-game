@@ -154,7 +154,7 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
-            if (!(hit && onThrowingCard(cardElement))) {
+            if (!hit) {
                 dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
             }
             updateCardPositions();
@@ -296,17 +296,25 @@ Object.values(socket.roomData.usersData).forEach(user => {
           <h2 class="player-nickname">${user.userName}</h2>
           <div class="player-cards-count">6</div>
         </div>`;
-
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
 turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
+
+const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+    playerInfo.classList.remove('turn');
+    if (playerInfo == nextTurnPlayerInfo) {
+        updateTurnIndicator(index);
+        nextTurnPlayerInfo.classList.add('turn');
+    }
+});
 
 const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
     (socket.joinType == 'rejoin' ? {} : {
-        count: 7, tillColor: null, grantUser: socket.data.userId,
+        count: 7, grantUser: socket.data.userId, tillColor: null, nonWild: null,
     }),
     (result) => {
         result.forEach((card, index) => {
@@ -319,24 +327,12 @@ setTimeout(() => {
     updateCardPositions();
 }, 100 + totaltAnimationTime);
 
+socket.roomData.lastPileCards.forEach(card => {
+    addPileCard(card, socket.roomData.lastPileCards.length);
+});
+
 if (socket.joinType == 'join') {
-    if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
-        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
-            (result) => {
-                socket.emit('throw card', { card: result[0], remUser: null });
-            }
-        );
-    }
+
 } else {
-    socket.roomData.lastPileCards.forEach(card => {
-        addPileCard(card);
-    });
-    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
-    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
-        playerInfo.classList.remove('turn');
-        if (playerInfo == nextTurnPlayerInfo) {
-            updateTurnIndicator(index);
-            nextTurnPlayerInfo.classList.add('turn');
-        }
-    });
+
 }

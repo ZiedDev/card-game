@@ -75,6 +75,27 @@ const iteratorFuncs = {
     },
 };
 
+function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
+    let choice = weightedRandomChoice(roomData.availableDeck);
+    while (nonWild && choice.split('_')[1] == 'wild') {
+        choice = weightedRandomChoice(roomData.availableDeck);
+    }
+    roomData.availableDeck.set(
+        choice,
+        roomData.availableDeck.get(choice) - 1
+    )
+    if (roomData.availableDeck.get(choice) == 0) {
+        roomData.availableDeck.delete(choice);
+    }
+    if (sumMap(roomData.availableDeck) <= 0) {
+        roomData.discardDeck.entries().forEach(([key, value]) => {
+            roomData.availableDeck.set(key, value);
+        });
+        return [choice, true];
+    }
+    return [choice, false];
+}
+
 module.exports = {
     generateRandomString,
     stringifyWithSets,
@@ -84,4 +105,5 @@ module.exports = {
     weightedRandomChoice,
     randomChoice,
     iteratorFuncs,
+    pullAndUpdateAvailableDeck,
 }

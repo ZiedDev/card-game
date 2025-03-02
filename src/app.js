@@ -18,6 +18,7 @@ const { generateRandomString,
     weightedRandomChoice,
     randomChoice,
     iteratorFuncs,
+    pullAndUpdateAvailableDeck,
 } = require('./funcs');
 const cardCount = require('./uno_card_count.json');
 
@@ -252,6 +253,10 @@ io.on('connection', socket => {
         roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
         iteratorFuncs.set(roomsData.get(roomCode), selectedUser);
 
+        const selectedGroundCard = drawCards({ count: 1, grantUser: null, tillColor: null, nonWild: true, })
+        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
+        roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
+
         // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
@@ -282,33 +287,22 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    socket.on('draw cards', (params, callback) => {
+    const drawCards = params => {
         let roomCode = socketsData.get(socket.id).roomCode;
-        let result = []
+        let result = [];
         if (params.tillColor) {
             let choice = ' _ ';
+            let reshuffle;
             while (choice.split('_')[1] != params.tillColor) {
-                choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck);
+                [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
                 result.push(choice);
-                roomsData.get(roomCode).availableDeck.set(
-                    choice,
-                    roomsData.get(roomCode).availableDeck.get(choice) - 1
-                )
-                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
-                    roomsData.get(roomCode).availableDeck.delete(choice);
-                }
+                if (reshuffle) io.to(roomCode).emit('reshuffle');
             }
         } else {
             for (let i = 0; i < params.count; i++) {
-                let choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck)
+                let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
                 result.push(choice);
-                roomsData.get(roomCode).availableDeck.set(
-                    choice,
-                    roomsData.get(roomCode).availableDeck.get(choice) - 1
-                )
-                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
-                    roomsData.get(roomCode).availableDeck.delete(choice);
-                }
+                if (reshuffle) io.to(roomCode).emit('reshuffle');
             }
         }
         if (params.grantUser) {
@@ -316,14 +310,19 @@ io.on('connection', socket => {
                 roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
             });
         }
-        roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, roomsData.get(roomCode).lastDeckCardCount);
+        roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, sumMap(roomsData.get(roomCode).availableDeck));
+
+        return result;
+    };
+
+    socket.on('draw cards', (params, callback) => {
+        let result = drawCards(params);
         callback(result);
     });
 
     socket.on('fetch cards', (data, callback) => {
         let socketData = socketsData.get(socket.id);
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
-
         callback(result);
     });
 
