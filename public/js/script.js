@@ -10,9 +10,9 @@ class StoredValue {
                 this._value = localStorage.getItem(this._name);
             } else {
                 this._value = defaultValue;
-                this._callback(this);
             }
         }
+        this._callback(this);
     }
     update() {
         localStorage.setItem(this._name, JSON.stringify(this._value));
@@ -28,6 +28,22 @@ class StoredValue {
 }
 
 const gamePreferenceOptions = {
+    "Jump-in": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Stack draw-2 and draw-4 cards": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "draw-2 and draw-4 skips": {
+        options: ['skip', 'do not skip'],
+        default: 'skip',
+    },
+    "Continue to Draw Until You Can Play": {
+        options: ['enable', 'maximum 2 cards'],
+        default: 'maximum 2 cards',
+    },
     "Number of decks": {
         options: ['1', '2', '3'],
         default: '1',
@@ -46,11 +62,19 @@ const gamePreferenceOptions = {
     },
 }
 
+const currVersion = 1;
+let userVersion = new StoredValue('userVersion', currVersion);
+userVersion.update();
+if (currVersion != userVersion.val) {
+    userVersion.val = currVersion;
+    console.log('restart');
+    _resetUserStorage();
+}
+
 let userId = new StoredValue('userId', '');
 let userName = new StoredValue('userName', '');
 let userPfp = new StoredValue('userPfp', 0);
 let roomCode = new StoredValue('roomCode', '');
-let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1');
 let userGamePreferences = new StoredValue(
     'userGamePreferences',
     Object.keys(gamePreferenceOptions).reduce((acc, key) => {
@@ -58,9 +82,19 @@ let userGamePreferences = new StoredValue(
         return acc;
     }, {})
 );
+let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1');
+let userIsCardBorder = new StoredValue('userIsCardBorder', false, self => {
+    document.documentElement.style.setProperty('--card-border',
+        self._value ? 'var(--font) 2pt solid' : 'none'
+    );
+});
 
 
-console.log(userId, userName, userPfp, roomCode, userDeckSkin, userGamePreferences);
+console.log(
+    userVersion,
+    userId, userName, userPfp, roomCode, userGamePreferences,
+    userDeckSkin, userIsCardBorder
+);
 
 function _resetUserStorage() {
     localStorage.removeItem('userId');
@@ -68,6 +102,8 @@ function _resetUserStorage() {
     localStorage.removeItem('userPfp');
     localStorage.removeItem('roomCode');
     localStorage.removeItem('userGamePreferences');
+    localStorage.removeItem('userDeckSkin');
+    localStorage.removeItem('userIsCardBorder');
 }
 
 async function createRoom() {

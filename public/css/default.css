@@ -6,9 +6,11 @@
     --font: #242222;
     --font-alt: #efe1e3;
     --gray: #aaaaaa;
+    --gray-darker: #adadad;
     --accent-green: #a9ff77;
     --accent-green-darker: #89ce62;
     --accent-green-alt: rgb(100 255 155);
+    --accent-green-alt-darker: hsl(141, 42%, 50%);
 }
 
 html,
@@ -49,4 +51,8 @@ body * {
 
 .scroll::-webkit-scrollbar-corner {
     background-color: var(--gray)
+}
+
+.hide {
+    display: none;
 }

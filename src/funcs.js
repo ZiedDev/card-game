@@ -57,6 +57,46 @@ function randomChoice(set) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const iteratorFuncs = {
+    reset: (roomData) => {
+        roomData.userIterator = new Set(roomData.gameData.direction == 'cw' ? Array.from(roomData.permaUserSet) : Array.from(roomData.permaUserSet).reverse()).values();
+    },
+    set: (roomData, value) => {
+        iteratorFuncs.reset(roomData);
+        while (roomData.userIterator.next().value != value) { };
+    },
+    get: (roomData) => {
+        let next = roomData.userIterator.next().value;
+        if (!next) {
+            iteratorFuncs.reset(roomData);
+            next = roomData.userIterator.next().value;
+        }
+        return next;
+    },
+};
+
+function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
+    let choice = weightedRandomChoice(roomData.availableDeck);
+    
+    while (nonWild && choice.split('_')[1] == 'wild') {
+        choice = weightedRandomChoice(roomData.availableDeck);
+    }
+    roomData.availableDeck.set(
+        choice,
+        roomData.availableDeck.get(choice) - 1
+    )
+    if (roomData.availableDeck.get(choice) == 0) {
+        roomData.availableDeck.delete(choice);
+    }
+    if (sumMap(roomData.availableDeck) <= 0) {
+        roomData.discardDeck.entries().forEach(([key, value]) => {
+            roomData.availableDeck.set(key, value);
+        });
+        return [choice, true];
+    }
+    return [choice, false];
+}
+
 module.exports = {
     generateRandomString,
     stringifyWithSets,
@@ -65,4 +105,6 @@ module.exports = {
     sumMap,
     weightedRandomChoice,
     randomChoice,
+    iteratorFuncs,
+    pullAndUpdateAvailableDeck,
 }

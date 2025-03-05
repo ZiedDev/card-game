@@ -6,22 +6,30 @@
   <div class="user-cards-count" id="user-cards-count">5</div>
 </div>
 
-<div class="you">
-  <div class="card-scrolling" id="card-scrolling">
-    <div class="self-cards" id="self-cards">
-      <!-- cards add in js -->
-    </div>
+<div class="self-cards-container" id="self-cards-container">
+  <div class="self-cards" id="self-cards">
+    <!-- cards add in js -->
   </div>
 </div>
 
 <div class="table">
-  <div class="drawing-deck"></div>
+  <div class="drawing-deck" id="drawing-deck"></div>
   <div class="discard-pile" id="discard-pile"></div>
 </div>
 
-<div class="turns-list" id="turns-list">
-  <div class="users-container scroll" id="users-container">
-    <div class="turn-indicator">Turn ></div>
+<div class="turns-list scroll" id="turns-list">
+  <div class="turn-indicator" id="turn-indicator">Turn ></div>
+  <div class="users-container" id="users-container">
     <!-- generated in script -->
+  </div>
+</div>
+
+<div class="wild-color-selector hide" id="wild-color-selector">
+  <div class="backdrop" id="wild-color-backdrop"></div>
+  <div class="color-wheel" id="color-wheel">
+    <div class="color"></div>
+    <div class="color"></div>
+    <div class="color"></div>
+    <div class="color"></div>
   </div>
 </div>

@@ -1,41 +1,6 @@
-// Scrolling thing
-const cardScrollingDOM = document.getElementById('card-scrolling');
-const cardScrollingWidth = cardScrollingDOM.getBoundingClientRect().width
+/*----------------------------------------------*/
+// Utility and helper functions
 
-let isDragging = false;
-let startX = 0;
-
-cardScrollingDOM.addEventListener('pointermove', e => {
-
-});
-
-cardScrollingDOM.addEventListener('pointerdown', e => {
-    isDragging = true;
-    startX = e.clientX;
-});
-
-document.addEventListener('pointermove', e => {
-    if (isDragging) {
-        let deltaX = e.clientX - startX;
-        let lerpedVal = rangeLerp(
-            inputValue = deltaX,
-            inputRangeStart = -cardScrollingWidth,
-            InputRangeEnd = cardScrollingWidth,
-            OutputRangeStart = -100,
-            OutputRangeEnd = 100,
-            capInput = false,
-            decimalPlaces = 1
-        );
-
-        // console.log(`deltaX: ${deltaX}, lerpedVal: ${lerpedVal}`);
-    }
-});
-
-document.addEventListener('pointerup', e => {
-    isDragging = false;
-});
-
-// Self Cards
 const heightDistrib = {
     2: 3,
     3: 10,
@@ -56,9 +21,6 @@ const spreadParams = {
     height: 50,
     yOffset: 30,
 }
-const zDepth = 200;
-const selfCards = document.getElementById('self-cards');
-const discardPile = document.getElementById('discard-pile');
 
 function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
     const R = (4 * height * height + spread * spread) / (8 * height);
@@ -75,30 +37,10 @@ function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height,
     const y = -1 * ((R + extraRadius) * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4) + yOffset);
     const ang = -1 * (180 / Math.PI) * (theta - (Math.PI / 2));
 
-    return `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+    return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg` };
 }
 
-function updateCardPositions() {
-    let cardContainers = document.querySelectorAll('.card-container');
-    cardContainers = [...cardContainers].reverse();
-
-    spreadParams.cardsNumber = cardContainers.length;
-    spreadParams.spread = Object.entries(spreadDistrib).find(([key]) => {
-        return (key == 'over' || cardContainers.length <= key)
-    })[1];
-    spreadParams.height = Object.entries(heightDistrib).find(([key]) => {
-        return (key == 'over' || cardContainers.length <= key)
-    })[1];;
-
-    cardContainers.forEach((cardContainer, index) => {
-        cardContainer.style = calculateCardPos({
-            index,
-            extraRadius: 0,
-        }, spreadParams);
-    });
-}
-
-function getRandomCard() { //temp
+function getRandomCard() { // placeholder
     const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const colors = ["blue", "green", "yellow", "red"];
     const actions1 = ["reverse", "draw", "skip"];
@@ -121,11 +63,103 @@ function getRandomCard() { //temp
     }
 }
 
-function addSelfCard(index = 0, cardName = null, update = true) {
+/*----------------------------------------------*/
+// Updating functions
+
+function updateTurnIndicator(index) {
+    const turnIndicator = document.getElementById('turn-indicator');
+    const player = document.querySelectorAll('.player-info')[index];
+
+    gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75,.06,.32,1.83") });
+    player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
+}
+
+function updateCardPositions() {
+    let cardContainers = document.querySelectorAll('.card-container');
+    cardContainers = [...cardContainers].reverse();
+
+    spreadParams.cardsNumber = cardContainers.length;
+    spreadParams.spread = Object.entries(spreadDistrib).find(([key]) => {
+        return (key == 'over' || cardContainers.length <= key)
+    })[1];
+    spreadParams.height = Object.entries(heightDistrib).find(([key]) => {
+        return (key == 'over' || cardContainers.length <= key)
+    })[1];;
+
+    cardContainers.forEach((cardContainer, index) => {
+        const pos = calculateCardPos({
+            index,
+            extraRadius: 0,
+        }, spreadParams);
+
+        cardContainer.style.setProperty('--x', pos.x);
+        cardContainer.style.setProperty('--y', pos.y);
+        cardContainer.style.setProperty('--ang', pos.ang);
+        cardContainer.style.setProperty('z-index', 0);
+        cardContainer.style.setProperty('--after-height', '0px');
+
+        if (cardContainer.style.getPropertyValue('translate') == 'none') {
+            cardContainer.style.setProperty('translate', 'var(--x) var(--y)');
+            cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+        }
+    });
+}
+
+function updateDeckCards(deckCardCount = 10) {
+    drawingDeck.innerHTML = '';
+    const cardDOM = `
+    <div class="card">
+        <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+    </div>`;
+    for (let i = 0; i < deckCardCount; i++) {
+        drawingDeck.appendChild(htmlToElement(cardDOM));
+
+        const cardElement = drawingDeck.children[i];
+
+        let dragEndTween;
+        let draggable = Draggable.create(cardElement, {
+            onDragStart: function (pointerEvent) {
+                isDragging = true;
+                try {
+                    dragEndTween.kill();
+                } catch { }
+            },
+            onDragEnd: function (pointerEvent) {
+                isDragging = false;
+
+                const hit = this.hitTest(document.getElementById('self-cards-container'));
+                if (hit) {
+                    socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
+                        cards => {
+                            // draw animation
+                            addSelfCard(socket.selfCards.length, cards[0]);
+                            socket.selfCards.push(cards[0]);
+
+                            updateDeckCards(deckCardCount);
+                        }
+                    );
+                } else {
+                    dragEndTween = gsap.to(this.target, { x: 0, y: 0, duration: 0.5 });
+                }
+            },
+        });
+    }
+}
+
+/*----------------------------------------------*/
+
+const selfCards = document.getElementById('self-cards');
+const discardPile = document.getElementById('discard-pile');
+const drawingDeck = document.getElementById('drawing-deck');
+
+let zDepth = 200;
+let isDragging = false;
+
+function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
     const cardDOM = `
     <div class="card-container">
         <div class="card">
-            <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
         </div>
     </div>`;
     if (index >= selfCards.children.length) {
@@ -136,21 +170,46 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     const cardElement = selfCards.children[index];
     const innerCardElement = cardElement.children[0];
 
-    // card position updates
-    cardElement.addEventListener('pointerenter', e => {
+    let dragEndTween;
+    Draggable.create(cardElement, {
+        onDragStart: function (pointerEvent) {
+            isDragging = true;
+            zDepth = 2000;
+            try {
+                dragEndTween.kill();
+            } catch { }
+            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'var(--x) var(--y)', duration: 0 });
+        },
+        onDragEnd: function (pointerEvent) {
+            isDragging = false;
+            zDepth = 200;
+            const hit = this.hitTest(document.getElementById('discard-pile'))
+            if (!(hit && onThrowingCard(cardElement))) {
+                dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
+            }
+            updateCardPositions();
+        },
+    });
+
+    cardElement.addEventListener('pointermove', (e) => {
+        if (isDragging) return;
+
         let cardContainers = document.querySelectorAll('.card-container');
         cardContainers = [...cardContainers].reverse();
         const index = Array.prototype.indexOf.call(cardContainers, cardElement);
 
-        cardElement.style = calculateCardPos({
+        const pos = calculateCardPos({
             index,
             extraRadius: 50,
         }, spreadParams);
+
+        cardElement.style.setProperty('--x', pos.x);
+        cardElement.style.setProperty('--y', pos.y);
+        cardElement.style.setProperty('--ang', pos.ang);
+        cardElement.style.setProperty('--after-height', '60px');
     });
 
-    cardElement.addEventListener('pointerleave', e => {
-        updateCardPositions();
-    });
+    cardElement.addEventListener('pointerleave', updateCardPositions);
 
     // card 3d updates
     innerCardElement.addEventListener('pointermove', e => {
@@ -173,17 +232,15 @@ function addSelfCard(index = 0, cardName = null, update = true) {
     if (update) updateCardPositions();
 }
 
-function removeSelfCard() {
-    selfCards.removeChild(selfCards.children[Math.floor(Math.random() * selfCards.children.length)]);
+function removeSelfCard(index = 0) {
+    selfCards.removeChild(selfCards.children[index]);
     updateCardPositions();
 }
 
-// Pile Cards
-
-function addPileCard(cardName = null) {
+function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
     const cardDOM = `
     <div class="card">
-        <img src="/assets/cards/${userDeckSkin.val}/${cardName ? cardName : getRandomCard()}.svg" alt="" draggable='false'>
+        <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
     </div>`;
     discardPile.appendChild(htmlToElement(cardDOM));
     const cardElement = discardPile.children[discardPile.children.length - 1];
@@ -192,63 +249,177 @@ function addPileCard(cardName = null) {
     const ang = Math.random() * 20 - 10;
     cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
 
-    if (discardPile.children.length > socket.roomData.lastPileCards.length) {
+    if (discardPile.children.length > maxPileSize) {
         discardPile.removeChild(discardPile.children[0]);
     }
 }
 
+/*----------------------------------------------*/
+// Pure animation functions
+
+function drawToSelf(cardNames = null) {
+    cardNames = cardNames ? cardNames : Array.from({ length: Math.floor(Math.random() * 4 + 1) }, getRandomCard);
+
+}
+
+function drawToOther(cardCount = null, userIndex = 0) {
+    // cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
+}
+
+function throwFromOther(cardName = getRandomCard(), userIndex = 0) {
+
+}
+
+/*----------------------------------------------*/
+
+const wildColorSelector = document.getElementById('wild-color-selector');
+const colorWheelBg = document.getElementById('color-wheel');
+const wildColorBackdrop = document.getElementById('wild-color-backdrop');
+const colorWheelColors = document.querySelectorAll('.color-wheel .color');
+let animationClear;
+
+function toggleWildColorSelector() {
+    if (wildColorSelector.classList.contains('hide')) {
+        try {
+            clearTimeout(animationClear);
+        } catch (error) { }
+
+        wildColorSelector.classList.remove('hide');
+
+        gsap.from('.color', { '--scale': 0, duration: 0.5, stagger: 0.12, ease: CustomEase.create("", ".75,.06,.32,1.83") });
+
+        gsap.from(colorWheelBg, { '--bg-scale': 0, duration: 0.35, delay: 0.5, ease: CustomEase.create("", ".75,.06,.32,1.3") });
+
+        gsap.from(wildColorBackdrop, { opacity: 0, duration: 1 });
+
+    } else {
+        gsap.to('.color', { '--scale': 0, duration: 0.5, stagger: 0.12, ease: CustomEase.create("", ".75,.06,.32,1.5") });
+
+        gsap.to(colorWheelBg, { '--bg-scale': 0, duration: 0.35, delay: 0.5, ease: CustomEase.create("", ".75,.06,.32,1.0") });
+
+        gsap.to(wildColorBackdrop, { opacity: 0, duration: 1 });
+
+        animationClear = setTimeout(() => {
+            wildColorSelector.classList.add('hide');
+        }, 1000);
+    }
+}
+
+function onThrowingCard(cardElement) {
+    const cardContainers = document.querySelectorAll('.card-container');
+    const index = Array.prototype.indexOf.call(cardContainers, cardElement);
+    let isValid = true;
+    // socket.emit('fetch isValidThrow',
+    //     { card: socket.selfCards[index] },
+    //     (result) => { isValid = result; }
+    // );
+    if (isValid) {
+        // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
+        selfCards.removeChild(cardElement);
+        socket.selfCards.splice(index, 1);
+        return true;
+    }
+    return false;
+}
+
+/*----------------------------------------------*/
+// Additional socket functionality
+
+socket.on('next turn', data => {
+    socket.roomData = parseWithSets(data.roomData);
+    addPileCard(data.card);
+
+    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        playerInfo.classList.remove('turn');
+        if (playerInfo == nextTurnPlayerInfo) {
+            updateTurnIndicator(index);
+            nextTurnPlayerInfo.classList.add('turn');
+        }
+    });
+});
+
+socket.on('draw deck', data => {
+    // update deck count
+    updateDeckCards(data.lastDeckCardCount);
+    if (data.user == socket.data.userId) {
+        socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
+            (result) => {
+                result.forEach((card) => {
+                    // draw animation
+                    addSelfCard(socket.selfCards.length, card);
+                    socket.selfCards.push(card);
+                });
+            }
+        );
+    } else {
+        // draw other
+    }
+});
+
+/*----------------------------------------------*/
+// Initialization and main running
+
 const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
 const turnsList = document.getElementById('turns-list');
-const turnListUsers = document.getElementById('users-container')
+const turnListUsers = document.getElementById('users-container');
 
 userNickname.textContent = socket.data.userName;
 userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
 
-Object.values(socket.roomData.usersData).forEach((user, index) => {
+Object.values(socket.roomData.usersData).forEach(user => {
     const userDOM = `
         <div class="player-info" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
           <div class="player-cards-count">6</div>
         </div>`;
-
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
+turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
 
-const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
-
-// rest of socket stuff
-socket.on('next turn', data => {
-    socket.roomData = parseWithSets(data.roomData);
-    addPileCard(data.card);
+const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
+Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+    playerInfo.classList.remove('turn');
+    if (playerInfo == nextTurnPlayerInfo) {
+        updateTurnIndicator(index);
+        nextTurnPlayerInfo.classList.add('turn');
+    }
 });
+
+const totalAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+
+updateDeckCards()
 
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
     (socket.joinType == 'rejoin' ? {} : {
-        count: 7, tillColor: null, grantUser: socket.data.userId,
+        count: 7, grantUser: socket.data.userId, tillColor: null, nonWild: null,
     }),
     (result) => {
-        result.forEach(card => {
-            addSelfCard(0, card, false);
+        result.forEach((card, index) => {
+            addSelfCard(index, card, false);
         });
+        socket.selfCards = result;
     }
 );
 setTimeout(() => {
     updateCardPositions();
-}, 100 + totaltAnimationTime);
+}, 100 + totalAnimationTime);
 
 if (socket.joinType == 'join') {
-    if (socket.roomData.gameData.currentPlayer == socket.data.userId) {
-        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: null, },
-            (result) => {
-                socket.emit('throw card', { card: result[0] });
-            }
-        );
-    }
+    setTimeout(() => {
+        socket.roomData.lastPileCards.forEach(card => {
+            addPileCard(card, socket.roomData.lastPileCards.length);
+        });
+    }, 800 + totalAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
-        addPileCard(card);
+        addPileCard(card, socket.roomData.lastPileCards.length);
     });
+}
+
+function invalidAnimation(cardElement = '.card') {
+    gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }

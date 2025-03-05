@@ -73,6 +73,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
     socket.emit('join room', socket.data);
 
     socket.joinType = roomResponse;
+    socket.selfCards = []
 
 
     socket.on('init roomData', data => {
@@ -97,8 +98,19 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
         });
         gsap.from(`.player`, playerListAnimationObject);
 
+        const inviteButton = document.getElementById('invite-button');
+        let inviteButtonIconTimeout = 0;
+        inviteButton.addEventListener('click', e => {
+            let text = window.location.href;
+            const copyContent = navigator.clipboard.writeText(text);
+            inviteButton.classList.add('invite-button-copy');
+            clearTimeout(inviteButtonIconTimeout);
+            inviteButtonIconTimeout = setTimeout(() => {
+                inviteButton.classList.remove('invite-button-copy');
+            }, 5 * 1000);
+        });
+
         if (socket.isOwner) {
-            document.getElementById('start-button').style.backgroundColor = 'var(--accent-green)';
             document.getElementById('start-button').disabled = false;
             document.getElementById('start-button').addEventListener('click', e => {
                 socket.emit('start game');
@@ -124,7 +136,6 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
                 });
             });
         } else {
-            document.getElementById('start-button').style.backgroundColor = '#000000';
             document.getElementById('start-button').disabled = true;
 
             Object.entries(socket.roomData.gamePreferences).forEach(([key, value]) => {

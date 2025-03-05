@@ -4,6 +4,7 @@ const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 const maxPileSize = process.env.MAX_PILE_SIZE = process.env.MAX_PILE_SIZE || 10;
+const inactiveTurnLimit = process.env.INACTIVE_TURN_LIMIT = process.env.INACTIVE_TURN_LIMIT || 10 * 1000 // 10secs;
 
 // library imports
 const express = require('express');
@@ -16,6 +17,8 @@ const { generateRandomString,
     sumMap,
     weightedRandomChoice,
     randomChoice,
+    iteratorFuncs,
+    pullAndUpdateAvailableDeck,
 } = require('./funcs');
 const cardCount = require('./uno_card_count.json');
 
@@ -86,18 +89,23 @@ app.post('/createRoom', (req, res) => {
 
         users: new Set(),
         rejoinableUsers: new Set(),
+        permaUserSet: null,
         usersData: {},
         gamePreferences: {},
 
         gameData: {
-            currentPlayer: null,
-            groundCard: null,
             direction: 'cw',
+            currentPlayer: null,
+            prevGroundCard: null,
+            groundCard: null,
+            drawSum: 0,
+            wildColor: null,
         },
         lastPileCards: [],
-        userIterator: null,
+        lastDeckCardCount: null,
 
         // not sended to client
+        userIterator: null,
         usersCards: new Map(),
         availableDeck: new Map(),
         discardDeck: new Map(),
@@ -181,6 +189,18 @@ io.on('connection', socket => {
             );
             if (roomsData.get(roomCode).started) {
                 roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
+                if (roomsData.get(roomCode).gameData.currentPlayer == socketData.userId) {
+                    setTimeout(() => {
+                        if (roomsData.get(roomCode).rejoinableUsers.has(socketData.userId)) {
+                            // play valid instead
+                            throwCard({
+                                roomCode,
+                                card: randomChoice(roomsData.get(roomCode).usersCards.get(socketData.userId)),
+                                remUser: socketData.userId,
+                            });
+                        }
+                    }, inactiveTurnLimit);
+                }
             } else {
                 delete roomsData.get(roomCode).usersData[socketData.userId];
                 const newOwnerId = roomsData.get(roomCode).users.values().next().value;
@@ -208,7 +228,7 @@ io.on('connection', socket => {
 
         roomsData.get(data.roomCode).usersData[data.userId] = data;
         if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
-            roomsData.get(data.roomCode).usersCards.set(data.userId, new Set());
+            roomsData.get(data.roomCode).usersCards.set(data.userId, []);
         }
         if (roomsData.get(data.roomCode).owner == data.userId) {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
@@ -227,10 +247,11 @@ io.on('connection', socket => {
         let roomCode = socketsData.get(socket.id).roomCode;
 
         roomsData.get(roomCode).started = true;
+        roomsData.get(roomCode).permaUserSet = new Set(roomsData.get(roomCode).users);
+
         const selectedUser = randomChoice(roomsData.get(roomCode).users);
         roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
-        roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
-        while (roomsData.get(roomCode).userIterator.next().value != selectedUser) { }
+        iteratorFuncs.set(roomsData.get(roomCode), selectedUser);
 
         // init deck
         Object.entries(cardCount).forEach(([key, value]) => {
@@ -252,6 +273,10 @@ io.on('connection', socket => {
             });
         });
 
+        const selectedGroundCard = drawCards({ count: 1, grantUser: null, tillColor: null, nonWild: true, })
+        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
+        roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
+
         io.to(roomCode).emit('start game');
         io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
     });
@@ -262,53 +287,110 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    socket.on('draw cards', (params, callback) => {
+    const drawCards = params => {
         let roomCode = socketsData.get(socket.id).roomCode;
-        let result = []
+        let result = [];
         if (params.tillColor) {
             let choice = ' _ ';
+            let reshuffle;
             while (choice.split('_')[1] != params.tillColor) {
-                choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck);
+                [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
                 result.push(choice);
-                roomsData.get(roomCode).availableDeck.set(
-                    choice,
-                    roomsData.get(roomCode).availableDeck.get(choice) - 1
-                )
-                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
-                    roomsData.get(roomCode).availableDeck.delete(choice);
-                }
+                if (reshuffle) io.to(roomCode).emit('reshuffle');
             }
         } else {
             for (let i = 0; i < params.count; i++) {
-                let choice = weightedRandomChoice(roomsData.get(roomCode).availableDeck)
+                let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
                 result.push(choice);
-                roomsData.get(roomCode).availableDeck.set(
-                    choice,
-                    roomsData.get(roomCode).availableDeck.get(choice) - 1
-                )
-                if (roomsData.get(roomCode).availableDeck.get(choice) == 0) {
-                    roomsData.get(roomCode).availableDeck.delete(choice);
-                }
+                if (reshuffle) io.to(roomCode).emit('reshuffle');
             }
         }
         if (params.grantUser) {
             result.forEach(card => {
-                roomsData.get(roomCode).usersCards.get(params.grantUser).add(card);
+                roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
             });
         }
+        roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, sumMap(roomsData.get(roomCode).availableDeck));
+
+        return result;
+    };
+
+    socket.on('draw cards', (params, callback) => {
+        let result = drawCards(params);
         callback(result);
     });
 
     socket.on('fetch cards', (data, callback) => {
         let socketData = socketsData.get(socket.id);
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
-
-        callback(Array.from(result));
+        callback(result);
     });
 
-    socket.on('throw card', data => {
-        let roomCode = socketsData.get(socket.id).roomCode;
+    const throwCard = data => {
+        // jumpIn remUser card roomCode
+        let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
 
+        if (data.jumpIn && data.remUser) {
+            iteratorFuncs.set(roomsData.get(roomCode), data.remUser);
+        }
+
+        // if remove from a specific user
+        if (data.remUser) {
+            const index = roomsData.get(roomCode).usersCards.get(data.remUser).indexOf(data.card);
+            if (index > -1) {
+                roomsData.get(roomCode).usersCards.get(data.remUser).splice(index, 1);
+            } else {
+                console.log(`ERROR ${data.remUser} doesnt have card ${data.card} in [${roomsData.get(roomCode).usersCards.get(data.remUser)}]`)
+            }
+        }
+
+        // handle card specific things
+        const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
+        console.log(data);
+
+        const cardParts = data.card.split('_');
+
+        // reverse iterator if reverse
+        if (cardParts[0] == 'reverse') {
+            roomsData.get(roomCode).gameData.direction = roomsData.get(roomCode).gameData.direction == 'cw' ? 'acw' : 'cw';
+            iteratorFuncs.set(roomsData.get(roomCode), prevUser);
+
+            if (roomsData.get(roomCode).permaUserSet.size == 2) {
+                iteratorFuncs.get(roomsData.get(roomCode));
+            }
+        }
+
+        // extra increment if skip
+        if (cardParts[0] == 'skip') {
+            iteratorFuncs.get(roomsData.get(roomCode));
+        }
+
+        // update wildColor if wild
+
+        // handle draw
+        if ((cardParts[0] == 'draw' || cardParts[0] == 'draw4') &&
+            roomsData.get(roomCode).gamePreferences["draw-2 and draw-4 skips"] == 'skip') {
+            io.to(roomCode).emit('draw deck', {
+                user: iteratorFuncs.get(roomsData.get(roomCode)),
+                count: cardParts[0] == 'draw' ? 2 : 4,
+                lastDeckCardCount: Math.min(maxPileSize,
+                    roomsData.get(roomCode).lastDeckCardCount - (cardParts[0] == 'draw' ? 2 : 4)
+                ),
+            });
+        }
+        // if (cardParts[0] == 'draw') {
+        //     roomsData.get(roomCode).gameData.drawSum += 2;
+        // }
+        // if (cardParts[0] == 'draw4') {
+        //     roomsData.get(roomCode).gameData.drawSum += 4;
+        // }
+
+        // increment user
+        let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+
+        // update cards
+        roomsData.get(roomCode).gameData.prevGroundCard = roomsData.get(roomCode).gameData.groundCard;
         roomsData.get(roomCode).gameData.groundCard = data.card;
 
         roomsData.get(roomCode).lastPileCards.push(data.card);
@@ -321,23 +403,27 @@ io.on('connection', socket => {
             roomsData.get(roomCode).discardDeck.has(data.card) ? roomsData.get(roomCode).discardDeck.get(data.card) - 1 : 1
         )
 
-        let nextUser = roomsData.get(roomCode).userIterator.next().value;
-        if (!nextUser) {
-            roomsData.get(roomCode).userIterator = roomsData.get(roomCode).users.values();
-            nextUser = roomsData.get(roomCode).userIterator.next().value;
+
+        // handle disconnected user
+        if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
+            setTimeout(() => {
+                if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
+                    // play valid instead       
+                    throwCard({
+                        roomCode,
+                        card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
+                        remUser: nextUser,
+                    });
+                }
+            }, inactiveTurnLimit);
         }
-        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
-
-
-        // handle card specific things
-
-        // reverse iterator if reverse
 
         io.to(roomCode).emit('next turn', {
             roomData: stringifyWithSets(roomsData.get(roomCode)),
             card: data.card,
         });
-    });
+    }
+    socket.on('throw card', throwCard);
 
     socket.on('test', () => {
         console.log('TEST:');

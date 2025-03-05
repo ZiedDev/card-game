@@ -64,4 +64,47 @@ userImageReload.addEventListener('click', e => {
         { duration: 500, iterations: 1, easing: 'cubic-bezier(.62,0,.7,1.51)' }
     );
     userImage.src = `/assets/pfps/${userPfp.val}.svg`;
-})
+});
+
+const customizeButton = document.getElementById('customize-button');
+const customizationMenu = document.getElementById('customization-menu');
+const confirmCustomizationButton = document.getElementById('confirm-customization-button');
+const cardBorderInput = document.getElementById('card-border-input');
+const deckSkinsContainer = document.getElementById('deck-skins-container');
+const customizeButtonIcon = document.getElementById('customize-button-icon');
+
+customizeButton.addEventListener('click', e => {
+    customizationMenu.classList.add('customization-menu-open');
+    customizeButton.classList.add('customize-button-open');
+    customizationMenu.style = `transition: transform 350ms cubic-bezier(0.75, 0, 0.25, 1.25);`;
+});
+
+confirmCustomizationButton.addEventListener('click', e => {
+    customizationMenu.classList.remove('customization-menu-open');
+    customizeButton.classList.remove('customize-button-open');
+    customizationMenu.style = `transition: transform 350ms cubic-bezier(0.75, 0, 0.25, 1);`;
+});
+
+cardBorderInput.addEventListener('change', e => {
+    userIsCardBorder.val = cardBorderInput.checked;
+});
+
+customizeButtonIcon.src = `/assets/cards/${userDeckSkin.val}/deck_logo.svg`;
+for (let i = 1; i <= 3; i++) {
+    const deckSkinContainerDOM = `
+    <button class="deck-skin-container ${'skin_' + i == userDeckSkin.val ? 'selected' : ''}">
+        <img src="/assets/cards/skin_${i}/deck_logo.svg" draggable="false">
+    </button>`;
+    deckSkinsContainer.appendChild(htmlToElement(deckSkinContainerDOM));
+    const deckSkinContainerElement = deckSkinsContainer.children[deckSkinsContainer.children.length - 1];
+    deckSkinContainerElement.addEventListener('click', e => {
+        userDeckSkin.val = 'skin_' + i;
+        Array.from(deckSkinsContainer.children).forEach((deckSkinContainer, index) => {
+            deckSkinContainer.classList.remove('selected');
+            if ('skin_' + (index + 1) == userDeckSkin.val) {
+                deckSkinContainer.classList.add('selected');
+            }
+        });
+        customizeButtonIcon.src = `/assets/cards/${userDeckSkin.val}/deck_logo.svg`;
+    });
+}
