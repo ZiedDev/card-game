@@ -112,7 +112,37 @@ function updateDeckCards(deckCardCount = 10) {
         <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
     </div>`;
     for (let i = 0; i < deckCardCount; i++) {
-        discardPile.appendChild(htmlToElement(cardDOM));
+        drawingDeck.appendChild(htmlToElement(cardDOM));
+
+        const cardElement = drawingDeck.children[i];
+
+        let dragEndTween;
+        let draggable = Draggable.create(cardElement, {
+            onDragStart: function (pointerEvent) {
+                isDragging = true;
+                try {
+                    dragEndTween.kill();
+                } catch { }
+            },
+            onDragEnd: function (pointerEvent) {
+                isDragging = false;
+
+                const hit = this.hitTest(document.getElementById('self-cards-container'));
+                if (hit) {
+                    socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
+                        cards => {
+                            // draw animation
+                            addSelfCard(socket.selfCards.length, cards[0]);
+                            socket.selfCards.push(cards[0]);
+
+                            updateDeckCards(deckCardCount);
+                        }
+                    );
+                } else {
+                    dragEndTween = gsap.to(this.target, { x: 0, y: 0, duration: 0.5 });
+                }
+            },
+        });
     }
 }
 
@@ -228,7 +258,7 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
 // Pure animation functions
 
 function drawToSelf(cardNames = null) {
-    // cardNames = cardNames ? cardNames : Array.from({ length: Math.floor(Math.random() * 4 + 1) }, getRandomCard);
+    cardNames = cardNames ? cardNames : Array.from({ length: Math.floor(Math.random() * 4 + 1) }, getRandomCard);
 
 }
 
@@ -284,7 +314,7 @@ function onThrowingCard(cardElement) {
     //     (result) => { isValid = result; }
     // );
     if (isValid) {
-        socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId });
+        // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
         selfCards.removeChild(cardElement);
         socket.selfCards.splice(index, 1);
         return true;
@@ -358,7 +388,9 @@ Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index
     }
 });
 
-const totaltAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+const totalAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+
+updateDeckCards()
 
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
@@ -374,16 +406,20 @@ socket.emit(
 );
 setTimeout(() => {
     updateCardPositions();
-}, 100 + totaltAnimationTime);
+}, 100 + totalAnimationTime);
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
         socket.roomData.lastPileCards.forEach(card => {
             addPileCard(card, socket.roomData.lastPileCards.length);
         });
-    }, 800 + totaltAnimationTime)
+    }, 800 + totalAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card, socket.roomData.lastPileCards.length);
     });
+}
+
+function invalidAnimation(cardElement = '.card') {
+    gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }

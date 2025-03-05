@@ -6,15 +6,9 @@ body {
     user-select: none;
 }
 
-.self {
-    z-index: 100;
-    position: relative;
-}
-
 .self-cards {
-    /* overflow: hidden; */
-
-    position: absolute;
+    z-index: 10000;
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
@@ -120,7 +114,7 @@ body {
     user-select: none;
 }
 
-.card-scrolling {
+.self-cards-container {
     /* background-color: cadetblue; */
     position: fixed;
     left: 50%;

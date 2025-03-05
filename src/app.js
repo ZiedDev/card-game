@@ -346,6 +346,8 @@ io.on('connection', socket => {
 
         // handle card specific things
         const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
+        console.log(data);
+
         const cardParts = data.card.split('_');
 
         // reverse iterator if reverse
