@@ -22,7 +22,7 @@ const spreadParams = {
     yOffset: 30,
 }
 
-function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height, yOffset }) {
+function calculateCardPos(index, { cardsNumber, spread, height, yOffset }) {
     const R = (4 * height * height + spread * spread) / (8 * height);
     let theta;
 
@@ -33,11 +33,11 @@ function calculateCardPos({ index, extraRadius }, { cardsNumber, spread, height,
         theta = (psi * index) + (Math.PI / 2) - Math.asin(spread / (2 * R));
     }
 
-    const x = (R + extraRadius) * Math.cos(theta);
-    const y = -1 * ((R + extraRadius) * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4) + yOffset);
+    const x = R * Math.cos(theta);
+    const y = -1 * (R * Math.sin(theta) - Math.sqrt(R * R - spread * spread / 4) + yOffset);
     const ang = -1 * (180 / Math.PI) * (theta - (Math.PI / 2));
 
-    return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg` };
+    return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg`, 'raw-theta': `${theta}` };
 }
 
 function getRandomCard() { // placeholder
@@ -87,19 +87,15 @@ function updateCardPositions() {
     })[1];;
 
     cardContainers.forEach((cardContainer, index) => {
-        const pos = calculateCardPos({
-            index,
-            extraRadius: 0,
-        }, spreadParams);
+        const pos = calculateCardPos(index, spreadParams);
 
-        cardContainer.style.setProperty('--x', pos.x);
-        cardContainer.style.setProperty('--y', pos.y);
-        cardContainer.style.setProperty('--ang', pos.ang);
+        Object.entries(pos).forEach(([key, value]) => {
+            cardContainer.style.setProperty('--' + key, value);
+        });
         cardContainer.style.setProperty('z-index', 0);
-        cardContainer.style.setProperty('--after-height', '0px');
 
         if (cardContainer.style.getPropertyValue('translate') == 'none') {
-            cardContainer.style.setProperty('translate', 'var(--x) var(--y)');
+            cardContainer.style.setProperty('translate', 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))');
             cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         }
     });
@@ -117,17 +113,20 @@ function updateDeckCards(deckCardCount = 10) {
         const cardElement = drawingDeck.children[i];
 
         let dragEndTween;
-        let draggable = Draggable.create(cardElement, {
+        let dragEndTimeout;
+        Draggable.create(cardElement, {
             onDragStart: function (pointerEvent) {
                 isDragging = true;
+                tablePiles.style.setProperty('z-index', 10);
                 try {
                     dragEndTween.kill();
+                    clearTimeout(dragEndTimeout);
                 } catch { }
             },
             onDragEnd: function (pointerEvent) {
                 isDragging = false;
 
-                const hit = this.hitTest(document.getElementById('self-cards-container'));
+                const hit = this.hitTest(document.getElementById('self-cards'));
                 if (hit) {
                     socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
                         cards => {
@@ -140,6 +139,9 @@ function updateDeckCards(deckCardCount = 10) {
                     );
                 } else {
                     dragEndTween = gsap.to(this.target, { x: 0, y: 0, duration: 0.5 });
+                    dragEndTimeout = setTimeout(() => {
+                        if (!isDragging) tablePiles.style.setProperty('z-index', 0);
+                    }, 500)
                 }
             },
         });
@@ -148,6 +150,7 @@ function updateDeckCards(deckCardCount = 10) {
 
 /*----------------------------------------------*/
 
+const tablePiles = document.getElementById('table-piles');
 const selfCards = document.getElementById('self-cards');
 const discardPile = document.getElementById('discard-pile');
 const drawingDeck = document.getElementById('drawing-deck');
@@ -173,43 +176,44 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
     let dragEndTween;
     Draggable.create(cardElement, {
         onDragStart: function (pointerEvent) {
+            tablePiles.style.setProperty('z-index', 0);
             isDragging = true;
             zDepth = 2000;
             try {
                 dragEndTween.kill();
             } catch { }
-            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'var(--x) var(--y)', duration: 0 });
+            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0 });
         },
         onDragEnd: function (pointerEvent) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
             if (!(hit && onThrowingCard(cardElement))) {
-                dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'var(--x) var(--y)', duration: 0.5 });
+                dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0.5 });
             }
             updateCardPositions();
         },
     });
 
-    cardElement.addEventListener('pointermove', (e) => {
-        if (isDragging) return;
+    // cardElement.addEventListener('pointermove', (e) => {
+    //     if (isDragging) return;
 
-        let cardContainers = document.querySelectorAll('.card-container');
-        cardContainers = [...cardContainers].reverse();
-        const index = Array.prototype.indexOf.call(cardContainers, cardElement);
+    //     let cardContainers = document.querySelectorAll('.card-container');
+    //     cardContainers = [...cardContainers].reverse();
+    //     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
 
-        const pos = calculateCardPos({
-            index,
-            extraRadius: 50,
-        }, spreadParams);
+    //     const pos = calculateCardPos({
+    //         index,
+    //         extraRadius: 50,
+    //     }, spreadParams);
 
-        cardElement.style.setProperty('--x', pos.x);
-        cardElement.style.setProperty('--y', pos.y);
-        cardElement.style.setProperty('--ang', pos.ang);
-        cardElement.style.setProperty('--after-height', '60px');
-    });
+    //     cardElement.style.setProperty('--x', pos.x);
+    //     cardElement.style.setProperty('--y', pos.y);
+    //     cardElement.style.setProperty('--ang', pos.ang);
+    //     cardElement.style.setProperty('--after-height', '60px');
+    // });
 
-    cardElement.addEventListener('pointerleave', updateCardPositions);
+    // cardElement.addEventListener('pointerleave', updateCardPositions);
 
     // card 3d updates
     innerCardElement.addEventListener('pointermove', e => {
@@ -270,18 +274,22 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0) {
 
 }
 
+function invalidAnimation(cardElement = '.card') {
+    gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
+}
+
 /*----------------------------------------------*/
 
 const wildColorSelector = document.getElementById('wild-color-selector');
 const colorWheelBg = document.getElementById('color-wheel');
 const wildColorBackdrop = document.getElementById('wild-color-backdrop');
 const colorWheelColors = document.querySelectorAll('.color-wheel .color');
-let animationClear;
+let wildColorSelectorTimeout;
 
 function toggleWildColorSelector() {
     if (wildColorSelector.classList.contains('hide')) {
         try {
-            clearTimeout(animationClear);
+            clearTimeout(wildColorSelectorTimeout);
         } catch (error) { }
 
         wildColorSelector.classList.remove('hide');
@@ -299,7 +307,7 @@ function toggleWildColorSelector() {
 
         gsap.to(wildColorBackdrop, { opacity: 0, duration: 1 });
 
-        animationClear = setTimeout(() => {
+        wildColorSelectorTimeout = setTimeout(() => {
             wildColorSelector.classList.add('hide');
         }, 1000);
     }
@@ -388,7 +396,7 @@ Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index
     }
 });
 
-const totalAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
+const curtainAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
 updateDeckCards()
 
@@ -406,20 +414,16 @@ socket.emit(
 );
 setTimeout(() => {
     updateCardPositions();
-}, 100 + totalAnimationTime);
+}, 100 + curtainAnimationTime);
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
         socket.roomData.lastPileCards.forEach(card => {
             addPileCard(card, socket.roomData.lastPileCards.length);
         });
-    }, 800 + totalAnimationTime)
+    }, 800 + curtainAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card, socket.roomData.lastPileCards.length);
     });
-}
-
-function invalidAnimation(cardElement = '.card') {
-    gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }

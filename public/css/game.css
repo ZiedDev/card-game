@@ -7,7 +7,16 @@ body {
 }
 
 .self-cards {
-    z-index: 10000;
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+
+    height: 15rem;
+    width: clamp(25rem, 45vw, 50rem);
+}
+
+/* .self-cards {
     position: fixed;
     left: 0;
     right: 0;
@@ -21,7 +30,7 @@ body {
     display: flex;
     gap: 1rem;
     align-items: center;
-}
+} */
 
 @property --x {
     syntax: '<length>';
@@ -41,11 +50,25 @@ body {
     inherits: false;
 }
 
+@property --raw-theta {
+    syntax: '<number>';
+    initial-value: 0;
+    inherits: false;
+}
+
+@property --extra-radius {
+    syntax: '<length>';
+    initial-value: 0px;
+    inherits: false;
+}
+
 .self-cards .card-container {
     user-select: none;
     --x: 0px;
     --y: 0px;
     --ang: 0deg;
+    --raw-theta: 0;
+    --extra-radius: 0px;
     --after-height: 0px;
 
     position: absolute;
@@ -53,14 +76,19 @@ body {
     bottom: 0;
 
     transform: translateX(-50%) rotate(var(--ang));
-    translate: var(--x) var(--y);
+    translate: calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)));
 
     transform-style: preserve-3d;
     perspective: 800px;
     perspective-origin: center;
     transform-origin: bottom;
 
-    transition: --x 0.3s, --y 0.3s, --ang 0.3s;
+    transition: --x 0.3s, --y 0.3s, --ang 0.3s, --extra-radius 0.3s;
+}
+
+.self-cards .card-container:hover {
+    --extra-radius: 50px;
+    --after-height: 60px;
 }
 
 .self-cards .card-container::after {
@@ -114,17 +142,6 @@ body {
     user-select: none;
 }
 
-.self-cards-container {
-    /* background-color: cadetblue; */
-    position: fixed;
-    left: 50%;
-    bottom: 2rem;
-    transform: translateX(-50%);
-
-    height: 15rem;
-    width: clamp(25rem, 45vw, 50rem);
-}
-
 .user-info {
     position: fixed;
     top: 1rem;
@@ -165,7 +182,7 @@ body {
     font-weight: 900;
 }
 
-.table {
+.table-piles {
     position: fixed;
     top: calc(75% - 15rem);
     left: 50%;
@@ -175,6 +192,7 @@ body {
 }
 
 .drawing-deck {
+    position: relative;
     height: 10rem;
     aspect-ratio: 2 / 3;
     box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
