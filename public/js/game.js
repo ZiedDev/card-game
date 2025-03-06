@@ -126,18 +126,11 @@ function updateDeckCards(deckCardCount = 10) {
             onDragEnd: function (pointerEvent) {
                 isDragging = false;
 
-                const hit = this.hitTest(document.getElementById('self-cards'));
-                if (hit) {
-                    socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
-                        cards => {
-                            // draw animation
-                            addSelfCard(socket.selfCards.length, cards[0]);
-                            socket.selfCards.push(cards[0]);
-
-                            updateDeckCards(deckCardCount);
-                        }
-                    );
-                } else {
+                const hit = this.hitTest(document.getElementById('self-cards'))
+                let isDrawSuccess = null;
+                if (hit) isDrawSuccess = onDrawingCard(deckCardCount);
+                if (hit && !isDrawSuccess) invalidAnimation();
+                if (!hit || !isDrawSuccess) {
                     dragEndTween = gsap.to(this.target, { x: 0, y: 0, duration: 0.5 });
                     dragEndTimeout = setTimeout(() => {
                         if (!isDragging) tablePiles.style.setProperty('z-index', 0);
@@ -188,12 +181,22 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
-            if (!(hit && onThrowingCard(cardElement))) {
+            let isThrowSuccess = null;
+            if (hit) isThrowSuccess = onThrowingCard(cardElement);
+            if (hit && !isThrowSuccess) invalidAnimation();
+            if (!hit || !isThrowSuccess) {
                 dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0.5 });
             }
             updateCardPositions();
         },
     });
+
+    const onInitialClick = e => {
+        dragEndTween = gsap.to(cardElement, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0.5 });
+        updateCardPositions();
+        cardElement.removeEventListener('click', onInitialClick);
+    }
+    cardElement.addEventListener('click', onInitialClick);
 
     // card 3d updates
     let firstMove = true;
@@ -224,7 +227,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             )
 
             if (diff > 1) {
-                console.log(angX, angY, diff);
                 hoverTween = gsap.to(innerCardElement, { '--rx': `${angX}deg`, '--ry': `${angY}deg`, duration: 0.1 });
             } else {
                 innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
@@ -336,6 +338,22 @@ function onThrowingCard(cardElement) {
         return true;
     }
     return false;
+}
+
+function onDrawingCard(deckCardCount) {
+    const randBool = Boolean(Math.round(Math.random()));
+    if (randBool) {
+        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
+            cards => {
+                // draw animation
+                addSelfCard(socket.selfCards.length, cards[0]);
+                socket.selfCards.push(cards[0]);
+
+                updateDeckCards(deckCardCount);
+            }
+        );
+    }
+    return randBool;
 }
 
 /*----------------------------------------------*/
