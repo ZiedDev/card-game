@@ -16,22 +16,6 @@ body {
     width: clamp(25rem, 45vw, 50rem);
 }
 
-/* .self-cards {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: 0;
-
-    height: calc(100% - 2rem);
-    padding: 1rem;
-    width: calc(100% - 2rem);
-
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-} */
-
 @property --x {
     syntax: '<length>';
     initial-value: 0px;
@@ -63,7 +47,6 @@ body {
 }
 
 .self-cards .card-container {
-    user-select: none;
     --x: 0px;
     --y: 0px;
     --ang: 0deg;
@@ -82,6 +65,7 @@ body {
     perspective: 800px;
     perspective-origin: center;
     transform-origin: bottom;
+    user-select: none;
 
     transition: --x 0.3s, --y 0.3s, --ang 0.3s, --extra-radius 0.3s;
 }
@@ -119,14 +103,14 @@ body {
 }
 
 .self-cards .card {
+    --rx: inherit;
+    --ry: inherit;
+    --rz: inherit;
     user-select: none;
     box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
     /* border: var(--font) 2pt solid; */
     border: var(--card-border);
-    --rx: inherit;
-    --ry: inherit;
-    --rz: inherit;
     transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
     height: 10rem;
     aspect-ratio: 2 / 3;

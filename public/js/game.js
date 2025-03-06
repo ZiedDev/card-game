@@ -195,27 +195,10 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         },
     });
 
-    // cardElement.addEventListener('pointermove', (e) => {
-    //     if (isDragging) return;
-
-    //     let cardContainers = document.querySelectorAll('.card-container');
-    //     cardContainers = [...cardContainers].reverse();
-    //     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
-
-    //     const pos = calculateCardPos({
-    //         index,
-    //         extraRadius: 50,
-    //     }, spreadParams);
-
-    //     cardElement.style.setProperty('--x', pos.x);
-    //     cardElement.style.setProperty('--y', pos.y);
-    //     cardElement.style.setProperty('--ang', pos.ang);
-    //     cardElement.style.setProperty('--after-height', '60px');
-    // });
-
-    // cardElement.addEventListener('pointerleave', updateCardPositions);
-
     // card 3d updates
+    let firstMove = true;
+    let is3dHovering = false;
+    let hoverTween;
     innerCardElement.addEventListener('pointermove', e => {
         const cardRect = innerCardElement.getBoundingClientRect()
         const centerX = (cardRect.left + cardRect.right) / 2;
@@ -226,11 +209,36 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         const angX = -Math.sign(deltaY) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaY, zDepth]);
         const angY = Math.sign(deltaX) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaX, zDepth]);
 
-        innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
+        is3dHovering = true;
+
+        try {
+            hoverTween.kill();
+        } catch { }
+
+        if (firstMove) {
+            firstMove = false;
+        } else {
+            let diff = Math.max(
+                Math.abs(parseFloat(innerCardElement.style.getPropertyValue('--rx')) - angX),
+                Math.abs(parseFloat(innerCardElement.style.getPropertyValue('--ry')) - angY)
+            )
+
+            if (diff > 1) {
+                console.log(angX, angY, diff);
+                hoverTween = gsap.to(innerCardElement, { '--rx': `${angX}deg`, '--ry': `${angY}deg`, duration: 0.1 });
+            } else {
+                innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
+            }
+        }
     });
 
     innerCardElement.addEventListener('pointerleave', e => {
+        try {
+            hoverTween.kill();
+        } catch { }
         innerCardElement.style = `--rx:0deg;--ry:0deg;`;
+        firstMove = true;
+        is3dHovering = false;
     });
 
     if (update) updateCardPositions();
