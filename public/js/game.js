@@ -297,6 +297,25 @@ function shuffleDeckAnimation() {
 
 }
 
+function groundCardAnimation() {
+    const card = document.querySelector('.discard-pile .card');
+    const ang = getComputedStyle(card).getPropertyValue('--ang');
+    gsap.fromTo(card, {
+        translateX: gsap.utils.random(-25, 100),
+        translateY: gsap.utils.random(30, 100),
+        rotate: gsap.utils.random(-90, 90),
+        zIndex: 100,
+    }, {
+        translateX: 0,
+        translateY: 0,
+        rotate: ang,
+        duration: 0.6,
+        ease: CustomEase.create("", ".28,-0.14,.28,.99"),
+        clearProps: "translateX, translateY, rotate, zIndex",
+    });
+}
+
+
 /*----------------------------------------------*/
 
 const wildColorSelector = document.getElementById('wild-color-selector');
@@ -453,10 +472,9 @@ setTimeout(() => {
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
-        socket.roomData.lastPileCards.forEach(card => {
-            addPileCard(card, socket.roomData.lastPileCards.length);
-        });
-    }, 800 + curtainAnimationTime)
+        addPileCard(socket.roomData.lastPileCards[0], socket.roomData.lastPileCards.length);
+        groundCardAnimation();
+    }, 100 + curtainAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
         addPileCard(card, socket.roomData.lastPileCards.length);
