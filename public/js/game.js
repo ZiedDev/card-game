@@ -211,7 +211,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
 
     // card 3d updates
     let firstMove = true;
-    let is3dHovering = false;
     let hoverTween;
     innerCardElement.addEventListener('pointermove', e => {
         const cardRect = innerCardElement.getBoundingClientRect()
@@ -282,11 +281,6 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
 /*----------------------------------------------*/
 // Pure animation functions
 
-function drawToSelf(cardNames = null) {
-    cardNames = cardNames ? cardNames : Array.from({ length: Math.floor(Math.random() * 4 + 1) }, getRandomCard);
-
-}
-
 function drawToOther(cardCount = null, userIndex = 0) {
     // cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
 }
@@ -297,6 +291,10 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0) {
 
 function invalidAnimation(cardElement = '.card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
+}
+
+function shuffleDeckAnimation() {
+
 }
 
 /*----------------------------------------------*/

@@ -1,5 +1,9 @@
 :root {
-    --card-border: none
+    --card-border: none;
+    --wild-color-1: #acc77e;
+    --wild-color-2: #ebc968;
+    --wild-color-3: #428bca;
+    --wild-color-4: #cb666a;
 }
 
 body {
@@ -319,11 +323,6 @@ body {
 }
 
 .color-wheel {
-    --color-1: #acc77e;
-    --color-2: #ebc968;
-    --color-3: #428bca;
-    --color-4: #cb666a;
-
     --bg-scale: 1;
 
     position: absolute;
@@ -372,7 +371,7 @@ body {
 
 .color-wheel .color:nth-child(1) {
     transform-origin: bottom right;
-    background-color: var(--color-1);
+    background-color: var(--wild-color-1);
     border-radius: 1rem 0 0 0;
 }
 
@@ -383,7 +382,7 @@ body {
 
 .color-wheel .color:nth-child(2) {
     transform-origin: bottom left;
-    background-color: var(--color-2);
+    background-color: var(--wild-color-2);
     border-radius: 0 1rem 0 0;
 }
 
@@ -394,7 +393,7 @@ body {
 
 .color-wheel .color:nth-child(3) {
     transform-origin: top right;
-    background-color: var(--color-3);
+    background-color: var(--wild-color-3);
     border-radius: 0 0 0 1rem;
 }
 
@@ -405,7 +404,7 @@ body {
 
 .color-wheel .color:nth-child(4) {
     transform-origin: top left;
-    background-color: var(--color-4);
+    background-color: var(--wild-color-4);
     border-radius: 0 0 1rem 0;
 }
 
