@@ -304,14 +304,13 @@ function groundCardAnimation() {
         translateX: gsap.utils.random(-25, 100),
         translateY: gsap.utils.random(30, 100),
         rotate: gsap.utils.random(-90, 90),
-        zIndex: 100,
     }, {
         translateX: 0,
         translateY: 0,
         rotate: ang,
         duration: 0.6,
         ease: CustomEase.create("", ".28,-0.14,.28,.99"),
-        clearProps: "translateX, translateY, rotate, zIndex",
+        clearProps: "translateX, translateY, rotate",
     });
 }
 
@@ -350,19 +349,27 @@ function toggleWildColorSelector() {
         }, 1000);
     }
 }
-
-function onThrowingCard(cardElement) {
+async function onThrowingCard(cardElement) {
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
-    let isValid = true;
-    // socket.emit('fetch isValidThrow',
-    //     { card: socket.selfCards[index] },
-    //     (result) => { isValid = result; }
-    // );
+    const cardName = socket.selfCards[index]
+
+    const isValid = await new Promise(resolve => {
+        socket.emit(
+            'attempt throw',
+            { card: cardName, user: socket.data.userId },
+            result => {
+                resolve(result);
+            }
+        );
+    });
+
     if (isValid) {
         // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
+        addPileCard(cardName);
         selfCards.removeChild(cardElement);
         socket.selfCards.splice(index, 1);
+        updateCardPositions();
         return true;
     }
     return false;
@@ -387,9 +394,13 @@ function onDrawingCard(deckCardCount) {
 /*----------------------------------------------*/
 // Additional socket functionality
 
-socket.on('next turn', data => {
+socket.on('reshuffle', data => {
+    shuffleDeckAnimation();
+});
+
+socket.on('update turn', data => {
     socket.roomData = parseWithSets(data.roomData);
-    addPileCard(data.card);
+    socket.isSelfTurn = socket.roomData.gameData.currentPlayer == socket.data.userId;
 
     const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
     Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
