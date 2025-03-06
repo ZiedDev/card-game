@@ -110,17 +110,17 @@ function updateDeckCards(deckCardCount = 10) {
     for (let i = 0; i < deckCardCount; i++) {
         drawingDeck.appendChild(htmlToElement(cardDOM));
 
+        if (i < deckCardCount - 1) continue;
+
         const cardElement = drawingDeck.children[i];
 
         let dragEndTween;
-        let dragEndTimeout;
         Draggable.create(cardElement, {
             onDragStart: function (pointerEvent) {
                 isDragging = true;
                 tablePiles.style.setProperty('z-index', 10);
                 try {
                     dragEndTween.kill();
-                    clearTimeout(dragEndTimeout);
                 } catch { }
             },
             onDragEnd: function (pointerEvent) {
@@ -131,10 +131,14 @@ function updateDeckCards(deckCardCount = 10) {
                 if (hit) isDrawSuccess = onDrawingCard(deckCardCount);
                 if (hit && !isDrawSuccess) invalidAnimation();
                 if (!hit || !isDrawSuccess) {
-                    dragEndTween = gsap.to(this.target, { x: 0, y: 0, duration: 0.5 });
-                    dragEndTimeout = setTimeout(() => {
-                        if (!isDragging) tablePiles.style.setProperty('z-index', 0);
-                    }, 500)
+                    dragEndTween = gsap.to(this.target, {
+                        x: 0,
+                        y: 0,
+                        duration: 0.5,
+                        onComplete: () => {
+                            if (!isDragging) tablePiles.style.setProperty('z-index', 0);
+                        },
+                    });
                 }
             },
         });
@@ -185,18 +189,25 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             if (hit) isThrowSuccess = onThrowingCard(cardElement);
             if (hit && !isThrowSuccess) invalidAnimation();
             if (!hit || !isThrowSuccess) {
-                dragEndTween = gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0.5 });
+                dragEndTween = gsap.to(this.target, {
+                    x: '-50%',
+                    y: 0,
+                    transform: 'rotate(var(--ang))',
+                    translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))',
+                    duration: 0.5,
+                    onComplete: () => {
+                        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+                    },
+                });
             }
             updateCardPositions();
         },
     });
 
-    const onInitialClick = e => {
-        dragEndTween = gsap.to(cardElement, { x: '-50%', y: 0, transform: 'rotate(var(--ang))', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0.5 });
+    cardElement.addEventListener('click', e => {
+        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         updateCardPositions();
-        cardElement.removeEventListener('click', onInitialClick);
-    }
-    cardElement.addEventListener('click', onInitialClick);
+    });
 
     // card 3d updates
     let firstMove = true;
