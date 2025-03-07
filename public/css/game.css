@@ -367,6 +367,7 @@ body {
 .color-wheel .color:hover {
     transform: scale(1.05);
     border: 1rem none;
+    cursor: pointer;
 }
 
 .color-wheel .color:nth-child(1) {

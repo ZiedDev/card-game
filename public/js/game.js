@@ -172,6 +172,10 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
 
     let dragEndTween;
     Draggable.create(cardElement, {
+        onPress: function (pointerEvent) {
+            cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+            updateCardPositions();
+        },
         onDragStart: function (pointerEvent) {
             tablePiles.style.setProperty('z-index', 0);
             isDragging = true;
@@ -204,10 +208,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         },
     });
 
-    cardElement.addEventListener('click', e => {
-        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
-        updateCardPositions();
-    });
 
     // card 3d updates
     let firstMove = true;
