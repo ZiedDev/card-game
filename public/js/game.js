@@ -40,6 +40,31 @@ function calculateCardPos(index, { cardsNumber, spread, height, yOffset }) {
     return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg`, 'raw-theta': `${theta}` };
 }
 
+function calculateCardDragOffset(cardElement, pointerEvent) {
+    const rect = selfCards.getBoundingClientRect();
+
+    const [globalX, globalY] = [pointerEvent.clientX, pointerEvent.clientY];
+
+    const [selfX, selfY] = [
+        globalX - (rect.left + rect.right) / 2,
+        globalY - rect.bottom,
+    ];
+
+    const [cardX, cardY] = getComputedStyle(cardElement).getPropertyValue('translate').split(' ').map(parseFloat);
+    const cardAng = (Math.PI / 180) * parseFloat(cardElement.style.getPropertyValue('--ang'));
+
+    const [localX, localY] = [selfX - cardX, cardY - selfY];
+
+    const [rotatedX, rotatedY] = [
+        Math.cos(cardAng) * localX - Math.sin(cardAng) * localY,
+        Math.sin(cardAng) * localX + Math.cos(cardAng) * localY,
+    ]
+
+    const [offsetX, offsetY] = [localX - rotatedX, rotatedY - localY];
+
+    return [`${offsetX}px`, `${offsetY}px`];
+}
+
 function getRandomCard() { // placeholder
     const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const colors = ["blue", "green", "yellow", "red"];
@@ -95,7 +120,7 @@ function updateCardPositions() {
         cardContainer.style.setProperty('z-index', 0);
 
         if (cardContainer.style.getPropertyValue('translate') == 'none') {
-            cardContainer.style.setProperty('translate', 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))');
+            cardContainer.style.setProperty('translate', 'var(--translate-default)');
             cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         }
     });
@@ -174,7 +199,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
     Draggable.create(cardElement, {
         onPress: function (pointerEvent) {
             cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
-            updateCardPositions();
         },
         onDragStart: function (pointerEvent) {
             tablePiles.style.setProperty('z-index', 0);
@@ -183,7 +207,10 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             try {
                 dragEndTween.kill();
             } catch { }
-            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0 });
+            const offset = calculateCardDragOffset(cardElement, pointerEvent);
+            cardElement.style.setProperty('--x-offset', offset[0]);
+            cardElement.style.setProperty('--y-offset', offset[1]);
+            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0deg)', translate: 'var(--translate-default)', duration: 0 });
         },
         onDragEnd: function (pointerEvent) {
             isDragging = false;
@@ -193,11 +220,13 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             if (hit) isThrowSuccess = onThrowingCard(cardElement);
             if (hit && !isThrowSuccess) invalidAnimation();
             if (!hit || !isThrowSuccess) {
+                cardElement.style.setProperty('--x-offset', '0px');
+                cardElement.style.setProperty('--y-offset', '0px');
                 dragEndTween = gsap.to(this.target, {
                     x: '-50%',
                     y: 0,
                     transform: 'rotate(var(--ang))',
-                    translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))',
+                    translate: 'var(--translate-default)',
                     duration: 0.5,
                     onComplete: () => {
                         cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');

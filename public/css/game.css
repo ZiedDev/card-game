@@ -50,20 +50,35 @@ body {
     inherits: false;
 }
 
+@property --x-offset {
+    syntax: '<length>';
+    initial-value: 0px;
+    inherits: false;
+}
+
+@property --y-offset {
+    syntax: '<length>';
+    initial-value: 0px;
+    inherits: false;
+}
+
 .self-cards .card-container {
     --x: 0px;
     --y: 0px;
     --ang: 0deg;
     --raw-theta: 0;
     --extra-radius: 0px;
+    --x-offset: 0px;
+    --y-offset: 0px;
     --after-height: 0px;
+    --translate-default: calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta)) + var(--x-offset)) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)) + var(--y-offset));
 
     position: absolute;
     left: 50%;
     bottom: 0;
 
     transform: translateX(-50%) rotate(var(--ang));
-    translate: calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)));
+    translate: var(--translate-default);
 
     transform-style: preserve-3d;
     perspective: 800px;
