@@ -62,6 +62,12 @@ const gamePreferenceOptions = {
     },
 }
 
+const deckSkinWildColors = {
+    skin_1: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
+    skin_2: ["#83c040", "#ffd136", "#0078ba", "#da3e25"],
+    skin_3: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
+}
+
 const currVersion = 1;
 let userVersion = new StoredValue('userVersion', currVersion);
 userVersion.update();
@@ -82,7 +88,11 @@ let userGamePreferences = new StoredValue(
         return acc;
     }, {})
 );
-let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1');
+let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1', self => {
+    deckSkinWildColors[self._value].forEach((color, index) => {
+        document.documentElement.style.setProperty('--wild-color-' + (index + 1), color);
+    })
+});
 let userIsCardBorder = new StoredValue('userIsCardBorder', false, self => {
     document.documentElement.style.setProperty('--card-border',
         self._value ? 'var(--font) 2pt solid' : 'none'

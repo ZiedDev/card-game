@@ -174,6 +174,41 @@ app.use((req, res, next) => {
     res.type('txt').send('Not found');
 });
 
+
+const drawCards = (socket, params) => {
+    let roomCode = socketsData.get(socket.id).roomCode;
+    let result = [];
+    if (params.tillColor) {
+        let choice = ' _ ';
+        let reshuffle;
+        while (choice.split('_')[1] != params.tillColor) {
+            [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
+            result.push(choice);
+            if (reshuffle) io.to(roomCode).emit('reshuffle');
+        }
+    } else {
+        for (let i = 0; i < params.count; i++) {
+            let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
+            result.push(choice);
+            if (reshuffle) io.to(roomCode).emit('reshuffle');
+        }
+    }
+    if (params.grantUser) {
+        result.forEach(card => {
+            roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
+        });
+    }
+    roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, sumMap(roomsData.get(roomCode).availableDeck));
+
+    return result;
+};
+
+const attemptThrow = (socket, params) => {
+    let roomCode = socketsData.get(socket.id).roomCode;
+    return roomsData.get(roomCode).gameData.currentPlayer == params.user;
+};
+
+
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
     socketsData.set(socket.id, {});
@@ -273,7 +308,7 @@ io.on('connection', socket => {
             });
         });
 
-        const selectedGroundCard = drawCards({ count: 1, grantUser: null, tillColor: null, nonWild: true, })
+        const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonWild: true, })
         roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
         roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
 
@@ -287,42 +322,19 @@ io.on('connection', socket => {
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
-    const drawCards = params => {
-        let roomCode = socketsData.get(socket.id).roomCode;
-        let result = [];
-        if (params.tillColor) {
-            let choice = ' _ ';
-            let reshuffle;
-            while (choice.split('_')[1] != params.tillColor) {
-                [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
-                result.push(choice);
-                if (reshuffle) io.to(roomCode).emit('reshuffle');
-            }
-        } else {
-            for (let i = 0; i < params.count; i++) {
-                let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
-                result.push(choice);
-                if (reshuffle) io.to(roomCode).emit('reshuffle');
-            }
-        }
-        if (params.grantUser) {
-            result.forEach(card => {
-                roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
-            });
-        }
-        roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, sumMap(roomsData.get(roomCode).availableDeck));
-
-        return result;
-    };
-
     socket.on('draw cards', (params, callback) => {
-        let result = drawCards(params);
+        let result = drawCards(socket, params);
         callback(result);
     });
 
     socket.on('fetch cards', (data, callback) => {
         let socketData = socketsData.get(socket.id);
         let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
+        callback(result);
+    });
+
+    socket.on('attempt throw', (data, callback) => {
+        let result = attemptThrow(socket, data);
         callback(result);
     });
 
@@ -440,6 +452,7 @@ io.of("/").adapter.on("create-room", (room) => {
 io.of("/").adapter.on("join-room", (room, id) => {
     if (rooms.has(room)) console.log(`socket [${id}] has joined room ${room}`);
 });
+
 
 server.listen(port, hostname, () => {
     console.log(`Server running on ${nodeEnv} environment at http://${hostname}:${port}/`);

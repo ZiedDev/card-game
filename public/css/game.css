@@ -1,5 +1,9 @@
 :root {
-    --card-border: none
+    --card-border: none;
+    --wild-color-1: #acc77e;
+    --wild-color-2: #ebc968;
+    --wild-color-3: #428bca;
+    --wild-color-4: #cb666a;
 }
 
 body {
@@ -7,20 +11,13 @@ body {
 }
 
 .self-cards {
-    z-index: 10000;
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: 0;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
 
-    height: calc(100% - 2rem);
-    padding: 1rem;
-    width: calc(100% - 2rem);
-
-    display: flex;
-    gap: 1rem;
-    align-items: center;
+    height: 15rem;
+    width: clamp(25rem, 45vw, 50rem);
 }
 
 @property --x {
@@ -41,11 +38,24 @@ body {
     inherits: false;
 }
 
+@property --raw-theta {
+    syntax: '<number>';
+    initial-value: 0;
+    inherits: false;
+}
+
+@property --extra-radius {
+    syntax: '<length>';
+    initial-value: 0px;
+    inherits: false;
+}
+
 .self-cards .card-container {
-    user-select: none;
     --x: 0px;
     --y: 0px;
     --ang: 0deg;
+    --raw-theta: 0;
+    --extra-radius: 0px;
     --after-height: 0px;
 
     position: absolute;
@@ -53,14 +63,20 @@ body {
     bottom: 0;
 
     transform: translateX(-50%) rotate(var(--ang));
-    translate: var(--x) var(--y);
+    translate: calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)));
 
     transform-style: preserve-3d;
     perspective: 800px;
     perspective-origin: center;
     transform-origin: bottom;
+    user-select: none;
 
-    transition: --x 0.3s, --y 0.3s, --ang 0.3s;
+    transition: --x 0.3s, --y 0.3s, --ang 0.3s, --extra-radius 0.3s;
+}
+
+.self-cards .card-container:hover {
+    --extra-radius: 50px;
+    --after-height: 60px;
 }
 
 .self-cards .card-container::after {
@@ -91,14 +107,14 @@ body {
 }
 
 .self-cards .card {
+    --rx: inherit;
+    --ry: inherit;
+    --rz: inherit;
     user-select: none;
     box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
     /* border: var(--font) 2pt solid; */
     border: var(--card-border);
-    --rx: inherit;
-    --ry: inherit;
-    --rz: inherit;
     transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz));
     height: 10rem;
     aspect-ratio: 2 / 3;
@@ -112,17 +128,6 @@ body {
 
 .self-cards .card img {
     user-select: none;
-}
-
-.self-cards-container {
-    /* background-color: cadetblue; */
-    position: fixed;
-    left: 50%;
-    bottom: 2rem;
-    transform: translateX(-50%);
-
-    height: 15rem;
-    width: clamp(25rem, 45vw, 50rem);
 }
 
 .user-info {
@@ -165,7 +170,7 @@ body {
     font-weight: 900;
 }
 
-.table {
+.table-piles {
     position: fixed;
     top: calc(75% - 15rem);
     left: 50%;
@@ -175,6 +180,7 @@ body {
 }
 
 .drawing-deck {
+    position: relative;
     height: 10rem;
     aspect-ratio: 2 / 3;
     box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
@@ -317,11 +323,6 @@ body {
 }
 
 .color-wheel {
-    --color-1: #acc77e;
-    --color-2: #ebc968;
-    --color-3: #428bca;
-    --color-4: #cb666a;
-
     --bg-scale: 1;
 
     position: absolute;
@@ -370,7 +371,7 @@ body {
 
 .color-wheel .color:nth-child(1) {
     transform-origin: bottom right;
-    background-color: var(--color-1);
+    background-color: var(--wild-color-1);
     border-radius: 1rem 0 0 0;
 }
 
@@ -381,7 +382,7 @@ body {
 
 .color-wheel .color:nth-child(2) {
     transform-origin: bottom left;
-    background-color: var(--color-2);
+    background-color: var(--wild-color-2);
     border-radius: 0 1rem 0 0;
 }
 
@@ -392,7 +393,7 @@ body {
 
 .color-wheel .color:nth-child(3) {
     transform-origin: top right;
-    background-color: var(--color-3);
+    background-color: var(--wild-color-3);
     border-radius: 0 0 0 1rem;
 }
 
@@ -403,7 +404,7 @@ body {
 
 .color-wheel .color:nth-child(4) {
     transform-origin: top left;
-    background-color: var(--color-4);
+    background-color: var(--wild-color-4);
     border-radius: 0 0 1rem 0;
 }
 
