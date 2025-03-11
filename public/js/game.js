@@ -313,7 +313,7 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
-
+const discardDummy = document.getElementById('discard-dummy');
 
 function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
@@ -406,9 +406,49 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1
 function invalidAnimation(cardElement = '.card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
+gsap.registerPlugin(MotionPathPlugin);
+function shuffleDeckAnimation(pileSize = discardPile.children.length - 1) {
+    for (let i = 0; i < pileSize; i++) {
+        const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+        </div>`;
 
-function shuffleDeckAnimation() {
+        discardDummy.appendChild(htmlToElement(cardDOM));
+    }
 
+    gsap.fromTo('.discard-dummy .card', {
+        zIndex: (index, target) => 100 + pileSize - index,
+        x: discardPile.getBoundingClientRect().left,
+        y: discardPile.getBoundingClientRect().top,
+    }, {
+        motionPath: {
+            path: [{
+                x: discardPile.getBoundingClientRect().left,
+                y: discardPile.getBoundingClientRect().top,
+                rotationY: 0,
+            },
+            {
+                x: drawingDeck.getBoundingClientRect().left + (discardPile.getBoundingClientRect().left - drawingDeck.getBoundingClientRect().left) / 2,
+                y: drawingDeck.getBoundingClientRect().top - 50,
+                rotationY: 90,
+            },
+            {
+                x: drawingDeck.getBoundingClientRect().left,
+                y: drawingDeck.getBoundingClientRect().top,
+                rotationY: 0,
+            }],
+        },
+
+        duration: 1,
+        stagger: 0.125,
+        // ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            Array.from(discardDummy.querySelectorAll('.card')).forEach(cardElement => {
+                discardDummy.removeChild(cardElement);
+            });
+        },
+    });
 }
 
 function groundCardAnimation() {
