@@ -290,17 +290,18 @@ function removeSelfCard(index = 0) {
     updateCardPositions();
 }
 
-function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
+function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVariables = {
+    x: Math.random() * 10 - 5,
+    y: Math.random() * 10 - 5,
+    ang: Math.random() * 20 - 10,
+}) {
     const cardDOM = `
     <div class="card">
         <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
     </div>`;
     discardPile.appendChild(htmlToElement(cardDOM));
     const cardElement = discardPile.children[discardPile.children.length - 1];
-    const x = Math.random() * 10 - 5;
-    const y = Math.random() * 10 - 5;
-    const ang = Math.random() * 20 - 10;
-    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+    cardElement.style = `--x:${randomizedVariables.x}px; --y:${randomizedVariables.y}px; --ang:${randomizedVariables.ang}deg`;
 
     if (discardPile.children.length > maxPileSize) {
         discardPile.removeChild(discardPile.children[0]);
@@ -310,12 +311,96 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
 /*----------------------------------------------*/
 // Pure animation functions
 
-function drawToOther(cardCount = null, userIndex = 0) {
-    // cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
+const otherPositions = document.getElementById('other-positions');
+const otherPositionsContainer = document.getElementById('other-positions-container');
+
+
+function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
+    cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
+    userIndex = userCount == 1 ? 1.5 : userIndex;
+    userCount = userCount == 1 ? 2 : userCount;
+
+    let playerX = rangeLerp(
+        userIndex,
+        inputRangeStart = 1,
+        InputRangeEnd = userCount,
+        OutputRangeStart = otherPositions.getBoundingClientRect().left,
+        OutputRangeEnd = otherPositions.getBoundingClientRect().right,
+        capInput = false,
+        decimalPlaces = 1);
+
+    for (let i = 0; i < cardCount; i++) {
+        const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+        </div>`;
+
+        otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+    }
+
+    gsap.fromTo('.other-positions-container .card', {
+        zIndex: (index, target) => 100 + cardCount - index,
+        x: drawingDeck.getBoundingClientRect().left,
+        y: drawingDeck.getBoundingClientRect().top,
+        rotate: 0,
+    }, {
+        x: (index, target) => gsap.utils.random(playerX - 25, playerX + 25),
+        y: (index, target) => -drawingDeck.getBoundingClientRect().height - 50,
+        rotate: (index, target) => gsap.utils.random(-35, 35),
+        duration: 1,
+        stagger: 0.25,
+        ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            Array.from(otherPositionsContainer.querySelectorAll('.card')).forEach(cardElement => {
+                otherPositionsContainer.removeChild(cardElement);
+            });
+        },
+    });
 }
 
-function throwFromOther(cardName = getRandomCard(), userIndex = 0) {
+function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10) {
+    userIndex = userCount == 1 ? 1.5 : userIndex;
+    userCount = userCount == 1 ? 2 : userCount;
 
+    let playerX = rangeLerp(
+        userIndex,
+        inputRangeStart = 1,
+        InputRangeEnd = userCount,
+        OutputRangeStart = otherPositions.getBoundingClientRect().left,
+        OutputRangeEnd = otherPositions.getBoundingClientRect().right,
+        capInput = false,
+        decimalPlaces = 1);
+
+    const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
+        </div>`;
+
+    otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+
+    const cardElement = otherPositionsContainer.children[otherPositionsContainer.children.length - 1];
+
+    const randomizedVariables = {
+        x: Math.random() * 10 - 5,
+        y: Math.random() * 10 - 5,
+        ang: Math.random() * 20 - 10,
+    }
+
+    gsap.fromTo(cardElement, {
+        x: gsap.utils.random(playerX - 25, playerX + 25),
+        y: -discardPile.getBoundingClientRect().height - 50,
+        rotate: gsap.utils.random(-35, 35),
+    }, {
+        x: discardPile.getBoundingClientRect().left + randomizedVariables.x,
+        y: discardPile.getBoundingClientRect().top + randomizedVariables.y,
+        rotate: randomizedVariables.ang,
+        duration: 1,
+        ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            otherPositionsContainer.removeChild(cardElement);
+            addPileCard(cardName, maxPileSize, randomizedVariables);
+        },
+    });
 }
 
 function invalidAnimation(cardElement = '.card') {
