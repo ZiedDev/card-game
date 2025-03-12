@@ -27,6 +27,12 @@ class StoredValue {
     }
 }
 
+const deckSkinWildColors = {
+    skin_1: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
+    skin_2: ["#83c040", "#ffd136", "#0078ba", "#da3e25"],
+    skin_3: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
+}
+
 const gamePreferenceOptions = {
     "Jump-in": {
         options: ['enable', 'disable'],
@@ -60,12 +66,6 @@ const gamePreferenceOptions = {
         options: ['enable', 'disable'],
         default: 'enable',
     },
-}
-
-const deckSkinWildColors = {
-    skin_1: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
-    skin_2: ["#83c040", "#ffd136", "#0078ba", "#da3e25"],
-    skin_3: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
 }
 
 const currVersion = 1;

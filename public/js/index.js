@@ -5,6 +5,8 @@ const nicknameInput = document.getElementById('nickname-input');
 const userImage = document.getElementById('user-image');
 const userImageReload = document.getElementById('user-image-reload');
 
+const pfpNum = 10;
+
 if (urlParams.get('r')) {
     playButton.textContent = 'Join';
     playButton.style.backgroundColor = 'var(--accent-green-alt)';
@@ -56,8 +58,8 @@ nicknameInput.value = userName.val;
 userImage.src = `/assets/pfps/${userPfp.val}.svg`;
 
 userImageReload.addEventListener('click', e => {
-    let n = Math.floor(Math.random() * 10);
-    while (n == userPfp.val) n = Math.floor(Math.random() * 10);
+    let n = Math.floor(Math.random() * pfpNum);
+    while (n == userPfp.val) n = Math.floor(Math.random() * pfpNum);
     userPfp.val = n;
     userImageReload.animate(
         [{ rotate: '0deg' }, { rotate: '380deg' }],
@@ -90,7 +92,7 @@ cardBorderInput.addEventListener('change', e => {
 });
 
 customizeButtonIcon.src = `/assets/cards/${userDeckSkin.val}/deck_logo.svg`;
-for (let i = 1; i <= 3; i++) {
+for (let i = 1; i <= Object.keys(deckSkinWildColors).length; i++) {
     const deckSkinContainerDOM = `
     <button class="deck-skin-container ${'skin_' + i == userDeckSkin.val ? 'selected' : ''}">
         <img src="/assets/cards/skin_${i}/deck_logo.svg" draggable="false">

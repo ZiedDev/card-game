@@ -40,6 +40,31 @@ function calculateCardPos(index, { cardsNumber, spread, height, yOffset }) {
     return { x: `${x}px`, y: `${y}px`, ang: `${ang}deg`, 'raw-theta': `${theta}` };
 }
 
+function calculateCardDragOffset(cardElement, pointerEvent) {
+    const rect = selfCards.getBoundingClientRect();
+
+    const [globalX, globalY] = [pointerEvent.clientX, pointerEvent.clientY];
+
+    const [selfX, selfY] = [
+        globalX - (rect.left + rect.right) / 2,
+        globalY - rect.bottom,
+    ];
+
+    const [cardX, cardY] = getComputedStyle(cardElement).getPropertyValue('translate').split(' ').map(parseFloat);
+    const cardAng = (Math.PI / 180) * parseFloat(cardElement.style.getPropertyValue('--ang'));
+
+    const [localX, localY] = [selfX - cardX, cardY - selfY];
+
+    const [rotatedX, rotatedY] = [
+        Math.cos(cardAng) * localX - Math.sin(cardAng) * localY,
+        Math.sin(cardAng) * localX + Math.cos(cardAng) * localY,
+    ]
+
+    const [offsetX, offsetY] = [localX - rotatedX, rotatedY - localY];
+
+    return [`${offsetX}px`, `${offsetY}px`];
+}
+
 function getRandomCard() { // placeholder
     const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const colors = ["blue", "green", "yellow", "red"];
@@ -95,7 +120,7 @@ function updateCardPositions() {
         cardContainer.style.setProperty('z-index', 0);
 
         if (cardContainer.style.getPropertyValue('translate') == 'none') {
-            cardContainer.style.setProperty('translate', 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))');
+            cardContainer.style.setProperty('translate', 'var(--translate-default)');
             cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         }
     });
@@ -172,6 +197,9 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
 
     let dragEndTween;
     Draggable.create(cardElement, {
+        onPress: function (pointerEvent) {
+            cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+        },
         onDragStart: function (pointerEvent) {
             tablePiles.style.setProperty('z-index', 0);
             isDragging = true;
@@ -179,7 +207,10 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             try {
                 dragEndTween.kill();
             } catch { }
-            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0)', translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))', duration: 0 });
+            const offset = calculateCardDragOffset(cardElement, pointerEvent);
+            cardElement.style.setProperty('--x-offset', offset[0]);
+            cardElement.style.setProperty('--y-offset', offset[1]);
+            gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0deg)', translate: 'var(--translate-default)', duration: 0 });
         },
         onDragEnd: function (pointerEvent) {
             isDragging = false;
@@ -189,11 +220,13 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             if (hit) isThrowSuccess = onThrowingCard(cardElement);
             if (hit && !isThrowSuccess) invalidAnimation();
             if (!hit || !isThrowSuccess) {
+                cardElement.style.setProperty('--x-offset', '0px');
+                cardElement.style.setProperty('--y-offset', '0px');
                 dragEndTween = gsap.to(this.target, {
                     x: '-50%',
                     y: 0,
                     transform: 'rotate(var(--ang))',
-                    translate: 'calc(var(--x) + var(--extra-radius) * cos(var(--raw-theta))) calc(var(--y) - var(--extra-radius) * sin(var(--raw-theta)))',
+                    translate: 'var(--translate-default)',
                     duration: 0.5,
                     onComplete: () => {
                         cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
@@ -204,10 +237,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         },
     });
 
-    cardElement.addEventListener('click', e => {
-        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
-        updateCardPositions();
-    });
 
     // card 3d updates
     let firstMove = true;
@@ -261,17 +290,18 @@ function removeSelfCard(index = 0) {
     updateCardPositions();
 }
 
-function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
+function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVariables = {
+    x: Math.random() * 10 - 5,
+    y: Math.random() * 10 - 5,
+    ang: Math.random() * 20 - 10,
+}) {
     const cardDOM = `
     <div class="card">
         <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
     </div>`;
     discardPile.appendChild(htmlToElement(cardDOM));
     const cardElement = discardPile.children[discardPile.children.length - 1];
-    const x = Math.random() * 10 - 5;
-    const y = Math.random() * 10 - 5;
-    const ang = Math.random() * 20 - 10;
-    cardElement.style = `--x:${x}px; --y:${y}px; --ang:${ang}deg`;
+    cardElement.style = `--x:${randomizedVariables.x}px; --y:${randomizedVariables.y}px; --ang:${randomizedVariables.ang}deg`;
 
     if (discardPile.children.length > maxPileSize) {
         discardPile.removeChild(discardPile.children[0]);
@@ -281,20 +311,144 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10) {
 /*----------------------------------------------*/
 // Pure animation functions
 
-function drawToOther(cardCount = null, userIndex = 0) {
-    // cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
+const otherPositions = document.getElementById('other-positions');
+const otherPositionsContainer = document.getElementById('other-positions-container');
+const discardDummy = document.getElementById('discard-dummy');
+
+function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
+    cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
+    userIndex = userCount == 1 ? 1.5 : userIndex;
+    userCount = userCount == 1 ? 2 : userCount;
+
+    let playerX = rangeLerp(
+        userIndex,
+        inputRangeStart = 1,
+        InputRangeEnd = userCount,
+        OutputRangeStart = otherPositions.getBoundingClientRect().left,
+        OutputRangeEnd = otherPositions.getBoundingClientRect().right,
+        capInput = false,
+        decimalPlaces = 1);
+
+    for (let i = 0; i < cardCount; i++) {
+        const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+        </div>`;
+
+        otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+    }
+
+    gsap.fromTo('.other-positions-container .card', {
+        zIndex: (index, target) => 100 + cardCount - index,
+        x: drawingDeck.getBoundingClientRect().left,
+        y: drawingDeck.getBoundingClientRect().top,
+        rotate: 0,
+    }, {
+        x: (index, target) => gsap.utils.random(playerX - 25, playerX + 25),
+        y: (index, target) => -drawingDeck.getBoundingClientRect().height - 50,
+        rotate: (index, target) => gsap.utils.random(-35, 35),
+        duration: 1,
+        stagger: 0.25,
+        ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            Array.from(otherPositionsContainer.querySelectorAll('.card')).forEach(cardElement => {
+                otherPositionsContainer.removeChild(cardElement);
+            });
+        },
+    });
 }
 
-function throwFromOther(cardName = getRandomCard(), userIndex = 0) {
+function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10) {
+    userIndex = userCount == 1 ? 1.5 : userIndex;
+    userCount = userCount == 1 ? 2 : userCount;
 
+    let playerX = rangeLerp(
+        userIndex,
+        inputRangeStart = 1,
+        InputRangeEnd = userCount,
+        OutputRangeStart = otherPositions.getBoundingClientRect().left,
+        OutputRangeEnd = otherPositions.getBoundingClientRect().right,
+        capInput = false,
+        decimalPlaces = 1);
+
+    const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/${cardName}.svg" alt="" draggable='false'>
+        </div>`;
+
+    otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+
+    const cardElement = otherPositionsContainer.children[otherPositionsContainer.children.length - 1];
+
+    const randomizedVariables = {
+        x: Math.random() * 10 - 5,
+        y: Math.random() * 10 - 5,
+        ang: Math.random() * 20 - 10,
+    }
+
+    gsap.fromTo(cardElement, {
+        x: gsap.utils.random(playerX - 25, playerX + 25),
+        y: -discardPile.getBoundingClientRect().height - 50,
+        rotate: gsap.utils.random(-35, 35),
+    }, {
+        x: discardPile.getBoundingClientRect().left + randomizedVariables.x,
+        y: discardPile.getBoundingClientRect().top + randomizedVariables.y,
+        rotate: randomizedVariables.ang,
+        duration: 1,
+        ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            otherPositionsContainer.removeChild(cardElement);
+            addPileCard(cardName, maxPileSize, randomizedVariables);
+        },
+    });
 }
 
 function invalidAnimation(cardElement = '.card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
+gsap.registerPlugin(MotionPathPlugin);
+function shuffleDeckAnimation(pileSize = discardPile.children.length - 1) {
+    for (let i = 0; i < pileSize; i++) {
+        const cardDOM = `
+        <div class="card">
+            <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
+        </div>`;
 
-function shuffleDeckAnimation() {
+        discardDummy.appendChild(htmlToElement(cardDOM));
+    }
 
+    gsap.fromTo('.discard-dummy .card', {
+        zIndex: (index, target) => 100 + pileSize - index,
+        x: discardPile.getBoundingClientRect().left,
+        y: discardPile.getBoundingClientRect().top,
+    }, {
+        motionPath: {
+            path: [{
+                x: discardPile.getBoundingClientRect().left,
+                y: discardPile.getBoundingClientRect().top,
+                rotationY: 0,
+            },
+            {
+                x: drawingDeck.getBoundingClientRect().left + (discardPile.getBoundingClientRect().left - drawingDeck.getBoundingClientRect().left) / 2,
+                y: drawingDeck.getBoundingClientRect().top - 50,
+                rotationY: 90,
+            },
+            {
+                x: drawingDeck.getBoundingClientRect().left,
+                y: drawingDeck.getBoundingClientRect().top,
+                rotationY: 0,
+            }],
+        },
+
+        duration: 1,
+        stagger: 0.125,
+        // ease: CustomEase.create("", ".49,-0.03,.2,.96"),
+        onComplete: () => {
+            Array.from(discardDummy.querySelectorAll('.card')).forEach(cardElement => {
+                discardDummy.removeChild(cardElement);
+            });
+        },
+    });
 }
 
 function groundCardAnimation() {
