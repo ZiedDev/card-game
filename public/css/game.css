@@ -203,16 +203,6 @@ body {
     z-index: 100;
 }
 
-.discard-dummy .card {
-    position: absolute;
-    height: 10rem;
-    aspect-ratio: 2 / 3;
-    border: var(--card-border);
-    border-radius: 5pt;
-    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
-    z-index: 100;
-}
-
 .table-piles {
     position: fixed;
     top: calc(75% - 15rem);
@@ -222,7 +212,17 @@ body {
     gap: 2rem;
 }
 
-.drawing-deck {
+.shuffle-dummy {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translate(-50%, -20%);
+    height: 10rem;
+    aspect-ratio: 2 / 3;
+}
+
+.drawing-deck,
+.discard-pile {
     position: relative;
     height: 10rem;
     aspect-ratio: 2 / 3;
@@ -230,12 +230,14 @@ body {
     border-radius: 5pt;
 }
 
-.discard-pile {
-    position: relative;
+.shuffle-dummy .card {
+    position: absolute;
     height: 10rem;
     aspect-ratio: 2 / 3;
-    box-shadow: inset 0px 0px 4px 3px rgba(0, 0, 0, 0.25);
+    border: var(--card-border);
     border-radius: 5pt;
+    box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
+    z-index: 100;
 }
 
 .drawing-deck .card {
