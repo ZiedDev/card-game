@@ -148,12 +148,12 @@ function updateDeckCards(deckCardCount = 10) {
                     dragEndTween.kill();
                 } catch { }
             },
-            onDragEnd: function (pointerEvent) {
+            onDragEnd: async function (pointerEvent) {
                 isDragging = false;
 
                 const hit = this.hitTest(document.getElementById('self-cards'))
                 let isDrawSuccess = null;
-                if (hit) isDrawSuccess = onDrawingCard(deckCardCount);
+                if (hit) isDrawSuccess = await onDrawingCard(deckCardCount);
                 if (hit && !isDrawSuccess) invalidAnimation();
                 if (!hit || !isDrawSuccess) {
                     dragEndTween = gsap.to(this.target, {
@@ -212,12 +212,12 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             cardElement.style.setProperty('--y-offset', offset[1]);
             gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0deg)', translate: 'var(--translate-default)', duration: 0 });
         },
-        onDragEnd: function (pointerEvent) {
+        onDragEnd: async function (pointerEvent) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
             let isThrowSuccess = null;
-            if (hit) isThrowSuccess = onThrowingCard(cardElement);
+            if (hit) isThrowSuccess = await onThrowingCard(cardElement);
             if (hit && !isThrowSuccess) invalidAnimation();
             if (!hit || !isThrowSuccess) {
                 cardElement.style.setProperty('--x-offset', '0px');
@@ -574,20 +574,27 @@ async function onThrowingCard(cardElement) {
     return false;
 }
 
-function onDrawingCard(deckCardCount) {
-    const randBool = Boolean(Math.round(Math.random()));
-    if (randBool) {
-        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
-            cards => {
-                // draw animation
-                addSelfCard(socket.selfCards.length, cards[0]);
-                socket.selfCards.push(cards[0]);
-
-                updateDeckCards(deckCardCount);
+async function onDrawingCard(deckCardCount) {
+    const drawResult = await new Promise(resolve => {
+        socket.emit(
+            'attempt draw',
+            { user: socket.data.userId },
+            result => {
+                resolve(result);
             }
         );
+    });
+
+    if (drawResult) {
+        drawResult.forEach(card => {
+            addSelfCard(socket.selfCards.length, card);
+            socket.selfCards.push(card);
+        });
+        updateDeckCards(deckCardCount);
+        return true;
     }
-    return randBool;
+
+    return false;
 }
 
 /*----------------------------------------------*/
@@ -609,24 +616,6 @@ socket.on('update turn', data => {
             nextTurnPlayerInfo.classList.add('turn');
         }
     });
-});
-
-socket.on('draw deck', data => {
-    // update deck count
-    updateDeckCards(data.lastDeckCardCount);
-    if (data.user == socket.data.userId) {
-        socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
-            (result) => {
-                result.forEach((card) => {
-                    // draw animation
-                    addSelfCard(socket.selfCards.length, card);
-                    socket.selfCards.push(card);
-                });
-            }
-        );
-    } else {
-        // draw other
-    }
 });
 
 /*----------------------------------------------*/

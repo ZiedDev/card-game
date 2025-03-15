@@ -54,7 +54,7 @@ app.use(express.urlencoded({ extended: false }));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
-
+// routes
 app.get('/', (req, res) => {
     res.render('index');
 });
@@ -207,7 +207,14 @@ const attemptThrow = (socket, params) => {
     return roomsData.get(roomCode).gameData.currentPlayer == params.user;
 };
 
+const attemptDraw = (socket, params) => {
+    const randBool = Boolean(Math.round(Math.random()));
+    let roomCode = socketsData.get(socket.id).roomCode;
+    const result = randBool ? false : drawCards(socket, { count: 1, grantUser: params.user, tillColor: null, nonWild: true, });
+    return result;
+};
 
+// socket
 io.on('connection', socket => {
     console.log(`user [${socket.id}] connected`);
     socketsData.set(socket.id, {});
@@ -342,6 +349,11 @@ io.on('connection', socket => {
         callback(result);
     });
 
+    socket.on('attempt draw', (data, callback) => {
+        let result = attemptDraw(socket, data);
+        callback(result);
+    });
+
     const throwCard = data => {
         // jumpIn remUser card roomCode
         let roomCode = data.roomCode || socketsData.get(socket.id).roomCode;
@@ -439,7 +451,7 @@ io.on('connection', socket => {
             card: data.card,
         });
     }
-    socket.on('throw card', throwCard);
+    socket.on('throw card', throwCard); // deprecated
 
     socket.on('test', () => {
         console.log('TEST:');
