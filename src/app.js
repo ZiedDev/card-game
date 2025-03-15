@@ -102,7 +102,7 @@ app.post('/createRoom', (req, res) => {
             wildColor: null,
         },
         lastPileCards: [],
-        lastDeckCardCount: null,
+        maxPileSize: maxPileSize,
 
         // not sended to client
         userIterator: null,
@@ -198,7 +198,6 @@ const drawCards = (socket, params) => {
             roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
         });
     }
-    roomsData.get(roomCode).lastDeckCardCount = Math.min(maxPileSize, sumMap(roomsData.get(roomCode).availableDeck));
 
     return result;
 };
@@ -305,12 +304,17 @@ io.on('connection', socket => {
                     subkey + '_' + key,
                     count * parseInt(roomsData.get(roomCode).gamePreferences['Number of decks'])
                 );
+                roomsData.get(roomCode).discardDeck.set(
+                    subkey + '_' + key,
+                    0
+                );
             });
         });
 
-        const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonWild: true, })
-        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
+        const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonWild: true, })[0];
         roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
+        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
+        roomsData.get(roomCode).discardDeck.set(selectedGroundCard, 1);
 
         io.to(roomCode).emit('start game');
         io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));

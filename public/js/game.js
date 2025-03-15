@@ -565,7 +565,7 @@ async function onThrowingCard(cardElement) {
 
     if (isValid) {
         // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
-        addPileCard(cardName);
+        addPileCard(cardName, socket.maxPileSize);
         selfCards.removeChild(cardElement);
         socket.selfCards.splice(index, 1);
         updateCardPositions();
@@ -594,7 +594,7 @@ function onDrawingCard(deckCardCount) {
 // Additional socket functionality
 
 socket.on('reshuffle', data => {
-    shuffleDeckAnimation();
+    shuffleDeckAnimation(socket.maxPileSize);
 });
 
 socket.on('update turn', data => {
@@ -682,11 +682,11 @@ setTimeout(() => {
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
-        addPileCard(socket.roomData.lastPileCards[0], socket.roomData.lastPileCards.length);
+        addPileCard(socket.roomData.lastPileCards[0], socket.maxPileSize);
         groundCardAnimation();
     }, 100 + curtainAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
-        addPileCard(card, socket.roomData.lastPileCards.length);
+        addPileCard(card, socket.maxPileSize);
     });
 }
