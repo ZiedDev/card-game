@@ -359,13 +359,13 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
 }
 
 function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10) {
-    userIndex = userCount == 1 ? 1.5 : userIndex;
-    userCount = userCount == 1 ? 2 : userCount;
+    userIndex = userCount == 1 ? 0.5 : userIndex;
+    userCount = userCount == 1 ? 1 : userCount;
 
     let playerX = rangeLerp(
         userIndex,
-        inputRangeStart = 1,
-        InputRangeEnd = userCount,
+        inputRangeStart = 0,
+        InputRangeEnd = userCount - 1,
         OutputRangeStart = otherPositions.getBoundingClientRect().left,
         OutputRangeEnd = otherPositions.getBoundingClientRect().right,
         capInput = false,
@@ -548,6 +548,7 @@ function toggleWildColorSelector() {
         }, 1000);
     }
 }
+
 async function onThrowingCard(cardElement) {
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
@@ -556,7 +557,11 @@ async function onThrowingCard(cardElement) {
     const isValid = await new Promise(resolve => {
         socket.emit(
             'attempt throw',
-            { card: cardName, user: socket.data.userId },
+            {
+                user: socket.data.userId,
+                cardName: cardName,
+                roomCode: null,
+            },
             result => {
                 resolve(result);
             }
@@ -616,6 +621,18 @@ socket.on('update turn', data => {
             nextTurnPlayerInfo.classList.add('turn');
         }
     });
+});
+
+socket.on('throw other', data => {
+    if (socket.data.userId == data.exceptUser) return;
+    throwFromOther(
+        data.cardName,
+        Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
+        socket.roomData.permaUserSet.size,
+        socket.maxPileSize
+    )
+    console.log(Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser), socket.roomData.permaUserSet.size);
+
 });
 
 /*----------------------------------------------*/
