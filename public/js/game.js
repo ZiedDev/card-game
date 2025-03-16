@@ -559,6 +559,7 @@ async function onThrowingCard(cardElement) {
             'attempt throw',
             {
                 user: socket.data.userId,
+                socketId: socket.id,
                 cardName: cardName,
                 roomCode: null,
             },
@@ -624,7 +625,7 @@ socket.on('update turn', data => {
 });
 
 socket.on('throw other', data => {
-    if (socket.data.userId == data.exceptUser) return;
+    if (socket.data.userId == data.exceptUser) return; // redundant
     throwFromOther(
         data.cardName,
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),

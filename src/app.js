@@ -205,6 +205,7 @@ const drawCards = (socket, params) => {
 const attemptThrow = (socket, params) => {
     let roomCode = params.roomCode || socketsData.get(socket.id).roomCode;
 
+    const socketId = params.socketId;
     const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
     const currUser = params.user;
     const isSelfTurn = roomsData.get(roomCode).gameData.currentPlayer == currUser;
@@ -259,18 +260,60 @@ const attemptThrow = (socket, params) => {
     // successful throw
 
     // reverse iterator if reverse
-    // if (cardParts[0] == 'reverse') {
-    //     roomsData.get(roomCode).gameData.direction = roomsData.get(roomCode).gameData.direction == 'cw' ? 'acw' : 'cw';
-    //     iteratorFuncs.set(roomsData.get(roomCode), prevUser);
+    if (cardParts[0] == 'reverse') {
+        roomsData.get(roomCode).gameData.direction = roomsData.get(roomCode).gameData.direction == 'cw' ? 'acw' : 'cw';
+        iteratorFuncs.set(roomsData.get(roomCode), prevUser);
 
-    //     if (roomsData.get(roomCode).permaUserSet.size == 2) {
-    //         iteratorFuncs.get(roomsData.get(roomCode));
-    //     }
+        if (roomsData.get(roomCode).permaUserSet.size == 2) {
+            iteratorFuncs.get(roomsData.get(roomCode));
+        }
+    }
+
+    // extra increment if skip
+    if (cardParts[0] == 'skip') {
+        iteratorFuncs.get(roomsData.get(roomCode));
+    }
+
+    // update wildColor if wild
+    // if not preset wildColor
+    io.to(socketId).emit('request wildColor');
+
+    // handle draw
+
+    // if (preferences["draw-2 and draw-4 skips"] == 'skip') {
+    //     // redundant skip
     // }
 
-    // // extra increment if skip
-    // if (cardParts[0] == 'skip') {
-    //     iteratorFuncs.get(roomsData.get(roomCode));
+    // if (preferences["Stack draw-2 and draw-4 cards"] == 'enabled') {
+    //     // stack
+
+    //     // if (alreadyDrown) {
+    //     //      drawSum = 0
+    //     // } else {
+
+    //     // }
+
+    //     return null;
+    // }
+    // if (cardParts[0] == 'draw' || cardParts[0] == 'draw4') {
+    //     if (!(groundCardParts[0] == 'draw' || groundCardParts[0] == 'draw4')) {
+    //         // logic here
+    //     } else {
+
+    //     }
+    //     io.to(roomCode).emit('draw deck', {
+    //         user: iteratorFuncs.get(roomsData.get(roomCode)),
+    //         count: cardParts[0] == 'draw' ? 2 : 4,
+    //         lastDeckCardCount: Math.min(maxPileSize,
+    //             roomsData.get(roomCode).lastDeckCardCount - (cardParts[0] == 'draw' ? 2 : 4)
+    //         ),
+    //     });
+    // }
+    // if (cardParts[0] == 'draw') {
+    //     roomsData.get(roomCode).gameData.drawSum += 2;
+    // }
+    // if (cardParts[0] == 'draw4') {
+    //     roomsData.get(roomCode).gameData.drawSum += 4;
     // }
 
     // increment user
@@ -304,7 +347,7 @@ const attemptThrow = (socket, params) => {
         roomData: stringifyWithSets(roomsData.get(roomCode))
     });
 
-    io.to(roomCode).emit('throw other', { // should except thrower
+    io.to(roomCode).except(socketId).emit('throw other', {
         cardName: cardName,
         exceptUser: currUser,
     });
