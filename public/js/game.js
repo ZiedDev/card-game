@@ -309,7 +309,7 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 }
 
 /*----------------------------------------------*/
-// Pure animation functions
+// Animation functions
 
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
@@ -522,6 +522,18 @@ const wildColorBackdrop = document.getElementById('wild-color-backdrop');
 const colorWheelColors = document.querySelectorAll('.color-wheel .color');
 let wildColorSelectorTimeout;
 
+// wildColorSelector functionality
+colorWheelColors.forEach((colorWheelColor, index) => {
+    colorWheelColor.addEventListener('click', e => {
+        if (!wildColorSelector.classList.contains('hide')) {
+            socket.emit('set wildColor', {
+                selectedColor: ['green', 'yellow', 'blue', 'red'][index],
+            });
+            toggleWildColorSelector()
+        }
+    });
+});
+
 function toggleWildColorSelector() {
     if (wildColorSelector.classList.contains('hide')) {
         try {
@@ -634,6 +646,10 @@ socket.on('throw other', data => {
     )
     console.log(Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser), socket.roomData.permaUserSet.size);
 
+});
+
+socket.on('request wildColor', data => {
+    toggleWildColorSelector();
 });
 
 /*----------------------------------------------*/

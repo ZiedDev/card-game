@@ -222,8 +222,18 @@ const attemptThrow = (socket, params) => {
     // jump in
     if (preferences["Jump-in"] == 'enable' && !isSelfTurn && cardParts[1] != 'wild' && cardName == groundCard) {
         iteratorFuncs.set(roomsData.get(roomCode), currUser);
-    } else if (!isSelfTurn) {
+    }
+    else if (!isSelfTurn) {
         return false;
+    }
+
+    if (groundCardParts[1] == 'wild' && (!wildColor || cardParts[1] != wildColor)) {
+        return false;
+    }
+
+    if (!(cardParts[0] == groundCardParts[0] || cardParts[1] == groundCardParts[1])) {
+        // return false;
+        // for debugging
     }
 
     // if (groundCardParts[0] == 'draw' || groundCardParts[0] == 'draw4') {
@@ -251,12 +261,6 @@ const attemptThrow = (socket, params) => {
     //     return true;
     // }
 
-    // if (cardParts[0] == groundCardParts[0] || cardParts[1] == groundCardParts[1]) {
-    //     // same type or same color
-
-    //     return true;
-    // }
-
     // successful throw
 
     // reverse iterator if reverse
@@ -276,7 +280,10 @@ const attemptThrow = (socket, params) => {
 
     // update wildColor if wild
     // if not preset wildColor
-    io.to(socketId).emit('request wildColor');
+    if (cardParts[1] == 'wild') {
+        roomsData.get(roomCode).gameData.wildColor = null;
+        io.to(socketId).emit('request wildColor');
+    }
 
     // handle draw
 
@@ -598,6 +605,11 @@ io.on('connection', socket => {
     socket.on('attempt draw', (data, callback) => {
         let result = attemptDraw(socket, data);
         callback(result);
+    });
+
+    socket.on('set wildColor', data => {
+        let roomCode = socketsData.get(socket.id).roomCode;
+        roomsData.get(roomCode).gameData.wildColor = data.selectedColor;
     });
 
     // socket.on('throw card', throwCard); // deprecated
