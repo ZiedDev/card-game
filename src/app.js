@@ -482,9 +482,38 @@ const throwCard = data => { // deprecated
 }
 
 const attemptDraw = (socket, params) => {
-    const randBool = Boolean(Math.round(Math.random()));
-    let roomCode = socketsData.get(socket.id).roomCode;
-    const result = randBool ? false : drawCards(socket, { count: 1, grantUser: params.user, tillColor: null, nonWild: true, });
+    let roomCode = params.roomCode || socketsData.get(socket.id).roomCode;
+    let result = null;
+
+    const socketId = params.socketId;
+    const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
+    const currUser = params.user;
+    const isSelfTurn = roomsData.get(roomCode).gameData.currentPlayer == currUser;
+    const drawSum = roomsData.get(roomCode).gameData.drawSum;
+    const wildColor = roomsData.get(roomCode).gameData.wildColor;
+    const preferences = roomsData.get(roomCode).gamePreferences;
+
+    if (!isSelfTurn) {
+        return false;
+    }
+
+    if (drawSum) {
+        result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonWild: true, });
+        io.to(roomCode).except(socketId).emit('draw other', {
+            cardCount: drawSum,
+            exceptUser: currUser,
+        });
+        roomsData.get(roomCode).gameData.drawSum = 0
+
+        if (preferences["draw-2 and draw-4 skips"] == 'skip') {
+            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+        }
+        return result;
+    }
+
+    // check if no cards can be played
+
     return result;
 };
 

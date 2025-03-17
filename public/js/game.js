@@ -317,13 +317,13 @@ const shuffleDummy = document.getElementById('shuffle-dummy');
 
 function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
-    userIndex = userCount == 1 ? 1.5 : userIndex;
-    userCount = userCount == 1 ? 2 : userCount;
+    userIndex = userCount == 1 ? 0.5 : userIndex;
+    userCount = userCount == 1 ? 1 : userCount;
 
     let playerX = rangeLerp(
         userIndex,
-        inputRangeStart = 1,
-        InputRangeEnd = userCount,
+        inputRangeStart = 0,
+        InputRangeEnd = userCount - 1,
         OutputRangeStart = otherPositions.getBoundingClientRect().left,
         OutputRangeEnd = otherPositions.getBoundingClientRect().right,
         capInput = false,
@@ -572,8 +572,8 @@ async function onThrowingCard(cardElement) {
             {
                 user: socket.data.userId,
                 socketId: socket.id,
-                cardName: cardName,
                 roomCode: null,
+                cardName: cardName,
             },
             result => {
                 resolve(result);
@@ -596,7 +596,11 @@ async function onDrawingCard(deckCardCount) {
     const drawResult = await new Promise(resolve => {
         socket.emit(
             'attempt draw',
-            { user: socket.data.userId },
+            {
+                user: socket.data.userId,
+                socketId: socket.id,
+                roomCode: null,
+            },
             result => {
                 resolve(result);
             }
@@ -644,8 +648,15 @@ socket.on('throw other', data => {
         socket.roomData.permaUserSet.size,
         socket.maxPileSize
     )
-    console.log(Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser), socket.roomData.permaUserSet.size);
+});
 
+socket.on('draw other', data => {
+    if (socket.data.userId == data.exceptUser) return; // redundant
+    drawToOther(
+        data.cardCount,
+        Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
+        socket.roomData.permaUserSet.size
+    )
 });
 
 socket.on('request wildColor', data => {
