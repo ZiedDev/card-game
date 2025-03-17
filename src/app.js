@@ -409,7 +409,14 @@ const attemptDraw = (socket, params) => {
             }
         }
         return result;
+    } else if (preferences["Allow drawing even with a valid card"] == 'enable') {
+        result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
+        io.to(roomCode).except(socketId).emit('draw other', {
+            cardCount: 1,
+            exceptUser: currUser,
+        });
     }
+
 
     return result;
 };

@@ -467,3 +467,16 @@ body {
     right: 0;
     box-shadow: 0 0 200px rgba(0, 0, 0, 0.9) inset;
 }
+
+.hitmarker {
+    position: absolute;
+    top: 20%;
+    right: 35%;
+
+    color: var(--font-alt);
+    font-size: 24pt;
+    font-weight: 600;
+    opacity: 0;
+
+    pointer-events: none;
+}

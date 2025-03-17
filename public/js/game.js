@@ -515,6 +515,76 @@ function groundCardAnimation() {
     });
 }
 
+function hitmarkerAnimation() {
+    const hitmarker = document.getElementById('hitmarker');
+
+    const currentX = gsap.getProperty(hitmarker, "x");
+    const currentY = gsap.getProperty(hitmarker, "y");
+
+    const randomRotation1 = gsap.utils.random(-45, 45);
+    const randomRotation2 = randomRotation1 + gsap.utils.random(-10, 10);
+    const randomXOffset = gsap.utils.random(-20, 20);
+    const randomYOffset = gsap.utils.random(-20, 20);
+
+    gsap.fromTo(hitmarker, {
+        x: currentX + randomXOffset,
+        y: currentY + randomYOffset,
+        rotation: randomRotation1,
+        opacity: 0,
+        scale: 1.2,
+    }, {
+        rotation: randomRotation2,
+        opacity: 1,
+        scale: 1,
+        duration: 0.2,
+        ease: "power2.out",
+        onComplete: () => {
+            gsap.to(hitmarker, {
+                duration: 0.5,
+                rotation: randomRotation2 + 10,
+                yoyo: true,
+                repeat: -1,
+                ease: RoughEase.ease.config({ strength: 5, points: 11, template: Linear.easeNone, randomize: false })
+            });
+        }
+    });
+
+    // gsap.fromTo(
+    //     hitmarker, {
+    //     x: currentX + randomXOffset,
+    //     y: currentY + randomYOffset,
+    //     rotation: randomRotation,
+    //     opacity: 0,
+    //     scale: 1.2,
+    // }, {
+    //     opacity: 1,
+    //     scale: 1,
+    //     duration: 0.2,
+    //     ease: "power2.out",
+    //     onComplete: () => {
+    //         gsap.to(hitmarker, {
+    //             duration: 0.5,
+    //             scale: 1.1,
+    //             yoyo: true, // Shake back and forth
+    //             repeat: 3,
+    //             ease: RoughEase.create({ template: Power0.easeNone, strength: 2, points: 20, taper: "none", randomize: true, clamp: false }),
+    //             onComplete: () => {
+    //                 gsap.to(hitmarker, {
+    //                     opacity: 0,
+    //                     duration: 0.3, // Quick fade-out
+    //                     onComplete: () => {
+    //                         gsap.set(hitmarker, {
+    //                             x: currentX,
+    //                             y: currentY,
+    //                             rotation: 0,
+    //                         });
+    //                     },
+    //                 });
+    //             }
+    //         });
+    //     },
+    // });
+}
 
 /*----------------------------------------------*/
 
