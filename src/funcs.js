@@ -75,10 +75,10 @@ const iteratorFuncs = {
     },
 };
 
-function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
+function pullAndUpdateAvailableDeck(roomData, nonAction = false) {
     let choice = weightedRandomChoice(roomData.availableDeck);
 
-    while (nonWild && choice.split('_')[1] == 'wild') {
+    while (nonAction && (choice.split('_')[1] == 'wild') || ['reverse', 'skip', 'draw'].includes(choice.split('_')[0])) {
         choice = weightedRandomChoice(roomData.availableDeck);
     }
     roomData.availableDeck.set(

@@ -701,7 +701,7 @@ updateDeckCards()
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
     (socket.joinType == 'rejoin' ? {} : {
-        count: 7, grantUser: socket.data.userId, tillColor: null, nonWild: null,
+        count: 7, grantUser: socket.data.userId, tillColor: null, nonAction: null,
     }),
     (result) => {
         result.forEach((card, index) => {

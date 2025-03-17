@@ -183,13 +183,13 @@ const drawCards = (socket, params) => {
         let choice = ' _ ';
         let reshuffle;
         while (choice.split('_')[1] != params.tillColor) {
-            [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
+            [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
         }
     } else {
         for (let i = 0; i < params.count; i++) {
-            let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonWild);
+            let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
         }
@@ -363,7 +363,7 @@ const attemptDraw = (socket, params) => {
     }
 
     if (drawSum) {
-        result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonWild: true, });
+        result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonAction: null, });
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: drawSum,
             exceptUser: currUser,
@@ -386,14 +386,14 @@ const attemptDraw = (socket, params) => {
     })
     if (noValidCard()) {
         if (preferences["Continue to Draw Until You Can Play"] == 'enable') {
-            result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonWild: true, });
+            result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
             io.to(roomCode).except(socketId).emit('draw other', {
                 cardCount: 1,
                 exceptUser: currUser,
             });
         } else if (preferences["Continue to Draw Until You Can Play"] == 'maximum 2 cards') {
             if (consecutiveDraws < 2) {
-                result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonWild: true, });
+                result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
                 io.to(roomCode).except(socketId).emit('draw other', {
                     cardCount: 1,
                     exceptUser: currUser,
@@ -518,7 +518,7 @@ io.on('connection', socket => {
             });
         });
 
-        const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonWild: true, })[0];
+        const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonAction: true, })[0];
         roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
         roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
         roomsData.get(roomCode).discardDeck.set(selectedGroundCard, 1);
