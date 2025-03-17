@@ -331,6 +331,8 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         capInput = false,
         decimalPlaces = 1);
 
+    const childrenToAnimate = [];
+
     for (let i = 0; i < cardCount; i++) {
         const cardDOM = `
         <div class="card">
@@ -338,9 +340,10 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         </div>`;
 
         otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+        childrenToAnimate.push(otherPositionsContainer.children[otherPositionsContainer.children.length - 1]);
     }
 
-    gsap.fromTo('.other-positions-container .card', {
+    gsap.fromTo(childrenToAnimate, {
         zIndex: (index, target) => 100 + cardCount - index,
         x: drawingDeck.getBoundingClientRect().left,
         y: drawingDeck.getBoundingClientRect().top,
@@ -353,7 +356,7 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         stagger: 0.25,
         ease: CustomEase.create("", ".49,-0.03,.2,.96"),
         onComplete: () => {
-            Array.from(otherPositionsContainer.querySelectorAll('.card')).forEach(cardElement => {
+            childrenToAnimate.forEach(cardElement => {
                 otherPositionsContainer.removeChild(cardElement);
             });
         },
