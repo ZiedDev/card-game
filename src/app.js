@@ -386,6 +386,14 @@ const attemptDraw = (socket, params) => {
             exceptUser: currUser,
         });
         roomsData.get(roomCode).gameData.stackDraw = false;
+
+        if (preferences["draw-2 and draw-4 skips"] == 'skip') {
+            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(roomsData.get(roomCode))
+            });
+        }
         return result;
     }
 
