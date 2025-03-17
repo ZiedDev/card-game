@@ -100,6 +100,7 @@ app.post('/createRoom', (req, res) => {
             groundCard: null,
             drawSum: 0,
             wildColor: null,
+            stackDraw: null,
             consecutiveDraws: 0,
         },
         lastPileCards: [],
@@ -203,7 +204,11 @@ const drawCards = (socket, params) => {
     return result;
 };
 
-const checkThrowValidity = (cardParts, groundCardParts, drawSum, wildColor, preferences) => {
+const checkThrowValidity = (cardParts, groundCardParts, drawSum, wildColor, stackDraw, preferences) => {
+    if (stackDraw) {
+        return false;
+    }
+
     if (drawSum) {
         if (preferences["Stack draw-2 and draw-4 cards"] == 'enable'
             && (cardParts[0] == 'draw' || cardParts[0] == 'draw4')) {
@@ -242,6 +247,7 @@ const attemptThrow = (socket, params) => {
     const prevGroundCardParts = prevGroundCard ? prevGroundCard.split('_') : null;
     const drawSum = roomsData.get(roomCode).gameData.drawSum;
     const wildColor = roomsData.get(roomCode).gameData.wildColor;
+    const stackDraw = roomsData.get(roomCode).gameData.stackDraw;
     const preferences = roomsData.get(roomCode).gamePreferences;
 
     // jump in
@@ -252,7 +258,7 @@ const attemptThrow = (socket, params) => {
         return false;
     }
 
-    if (!checkThrowValidity(cardParts, groundCardParts, drawSum, wildColor, preferences)) {
+    if (!checkThrowValidity(cardParts, groundCardParts, drawSum, wildColor, stackDraw, preferences)) {
         return false;
     }
 
@@ -280,12 +286,22 @@ const attemptThrow = (socket, params) => {
         io.to(socketId).emit('request wildColor');
     }
 
+    // update stackDraw if stack
+    if (cardParts[0] == 'stack') {
+        roomsData.get(roomCode).gameData.stackDraw = true;
+    }
+
     // add to drawSum if draw
     if (cardParts[0] == 'draw') {
         roomsData.get(roomCode).gameData.drawSum += 2;
     }
     if (cardParts[0] == 'draw4') {
         roomsData.get(roomCode).gameData.drawSum += 4;
+    }
+    if (cardParts[0] == 'draw' || cardParts[0] == 'draw4') {
+        io.to(roomCode).emit('update drawSum', {
+            drawSum: roomsData.get(roomCode).gameData.drawSum
+        });
     }
 
     // increment user
@@ -355,11 +371,30 @@ const attemptDraw = (socket, params) => {
     const groundCardParts = groundCard.split('_');
     const drawSum = roomsData.get(roomCode).gameData.drawSum;
     const wildColor = roomsData.get(roomCode).gameData.wildColor;
+    const stackDraw = roomsData.get(roomCode).gameData.stackDraw;
     const consecutiveDraws = roomsData.get(roomCode).gameData.consecutiveDraws;
     const preferences = roomsData.get(roomCode).gamePreferences;
 
     if (!isSelfTurn) {
         return false;
+    }
+
+    if (stackDraw && wildColor) {
+        result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
+        io.to(roomCode).except(socketId).emit('draw other', {
+            cardCount: result.length,
+            exceptUser: currUser,
+        });
+        roomsData.get(roomCode).gameData.stackDraw = false;
+
+        if (preferences["draw-2 and draw-4 skips"] == 'skip') {
+            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(roomsData.get(roomCode))
+            });
+        }
+        return result;
     }
 
     if (drawSum) {
@@ -368,7 +403,10 @@ const attemptDraw = (socket, params) => {
             cardCount: drawSum,
             exceptUser: currUser,
         });
-        roomsData.get(roomCode).gameData.drawSum = 0
+        roomsData.get(roomCode).gameData.drawSum = 0;
+        io.to(roomCode).emit('update drawSum', {
+            drawSum: roomsData.get(roomCode).gameData.drawSum
+        });
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
             let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
@@ -409,7 +447,14 @@ const attemptDraw = (socket, params) => {
             }
         }
         return result;
+    } else if (preferences["Allow drawing even with a valid card"] == 'enable') {
+        result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
+        io.to(roomCode).except(socketId).emit('draw other', {
+            cardCount: 1,
+            exceptUser: currUser,
+        });
     }
+
 
     return result;
 };

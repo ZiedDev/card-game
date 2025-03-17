@@ -200,6 +200,9 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         onPress: function (pointerEvent) {
             cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         },
+        onRelease: function (pointerEvent) {
+            updateCardPositions();
+        },
         onDragStart: function (pointerEvent) {
             tablePiles.style.setProperty('z-index', 0);
             isDragging = true;
@@ -233,7 +236,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
                     },
                 });
             }
-            updateCardPositions();
         },
     });
 
@@ -314,6 +316,8 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
 const shuffleDummy = document.getElementById('shuffle-dummy');
+const hitmarker = document.getElementById('hitmarker');
+let hitmarkerTween;
 
 function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
@@ -329,6 +333,8 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         capInput = false,
         decimalPlaces = 1);
 
+    const childrenToAnimate = [];
+
     for (let i = 0; i < cardCount; i++) {
         const cardDOM = `
         <div class="card">
@@ -336,9 +342,10 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         </div>`;
 
         otherPositionsContainer.appendChild(htmlToElement(cardDOM));
+        childrenToAnimate.push(otherPositionsContainer.children[otherPositionsContainer.children.length - 1]);
     }
 
-    gsap.fromTo('.other-positions-container .card', {
+    gsap.fromTo(childrenToAnimate, {
         zIndex: (index, target) => 100 + cardCount - index,
         x: drawingDeck.getBoundingClientRect().left,
         y: drawingDeck.getBoundingClientRect().top,
@@ -351,7 +358,7 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
         stagger: 0.25,
         ease: CustomEase.create("", ".49,-0.03,.2,.96"),
         onComplete: () => {
-            Array.from(otherPositionsContainer.querySelectorAll('.card')).forEach(cardElement => {
+            childrenToAnimate.forEach(cardElement => {
                 otherPositionsContainer.removeChild(cardElement);
             });
         },
@@ -403,7 +410,7 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1
     });
 }
 
-function invalidAnimation(cardElement = '.card') {
+function invalidAnimation(cardElement = '.self-cards .card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
 
@@ -513,6 +520,52 @@ function groundCardAnimation() {
     });
 }
 
+function hitmarkerAnimation(value = 0) {
+    try {
+        hitmarkerTween.kil();
+    } catch { }
+
+    hitmarker.innerText = escapeHtml('+' + value);
+
+    if (value == 0) {
+        hitmarker.style = '';
+        return;
+    }
+
+    const randomRotation1 = gsap.utils.random(-30, 30);
+    const randomRotation2 = randomRotation1 + gsap.utils.random(-10, 10);
+    const randomXOffset = gsap.utils.random(-20, 20);
+    const randomYOffset = gsap.utils.random(-20, 20);
+    const shakeDirection = Math.random() * Math.PI;
+    const time = rangeLerp(value, 0, 12, 3, 0.5, true, 1);
+    const strength = rangeLerp(value, 0, 12, 0, 10, true, 0);
+
+    gsap.fromTo(hitmarker, 0.2, {
+        rotation: randomRotation1,
+        opacity: 0,
+        scale: 1.4,
+    }, {
+        x: randomXOffset,
+        y: randomYOffset,
+        rotation: randomRotation2,
+        opacity: 1,
+        scale: 1,
+        ease: "power2.out",
+        onComplete: () => {
+            hitmarkerTween = gsap.fromTo(hitmarker, parseFloat(time), {
+                x: randomXOffset - Math.cos(shakeDirection),
+                y: randomYOffset - Math.sin(shakeDirection),
+                rotation: randomRotation2,
+            }, {
+                x: randomXOffset + Math.cos(shakeDirection),
+                y: randomYOffset + Math.sin(shakeDirection),
+                rotation: randomRotation2,
+                repeat: -1,
+                ease: RoughEase.ease.config({ strength: parseInt(strength), points: 11, template: Linear.easeNone, randomize: false }),
+            });
+        }
+    });
+}
 
 /*----------------------------------------------*/
 
@@ -657,6 +710,11 @@ socket.on('draw other', data => {
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
         socket.roomData.permaUserSet.size
     )
+});
+
+socket.on('update drawSum', data => {
+    hitmarkerAnimation(data.drawSum);
+    socket.roomData.gameData.drawSum = data.drawSum;
 });
 
 socket.on('request wildColor', data => {
