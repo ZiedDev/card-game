@@ -79,6 +79,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
     socket.on('init roomData', data => {
         socket.roomData = parseWithSets(data);
         socket.isOwner = socket.roomData.owner == userId.val;
+        socket.maxPileSize = socket.roomData.maxPileSize;
 
         if (socket.joinType == 'rejoin') return;
 

@@ -75,10 +75,10 @@ const iteratorFuncs = {
     },
 };
 
-function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
+function pullAndUpdateAvailableDeck(roomData, nonAction = false) {
     let choice = weightedRandomChoice(roomData.availableDeck);
-    
-    while (nonWild && choice.split('_')[1] == 'wild') {
+
+    while (nonAction && (choice.split('_')[1] == 'wild') || ['reverse', 'skip', 'draw'].includes(choice.split('_')[0])) {
         choice = weightedRandomChoice(roomData.availableDeck);
     }
     roomData.availableDeck.set(
@@ -89,8 +89,15 @@ function pullAndUpdateAvailableDeck(roomData, nonWild = false) {
         roomData.availableDeck.delete(choice);
     }
     if (sumMap(roomData.availableDeck) <= 0) {
+        const lastCard = roomData.lastPileCards[roomData.lastPileCards.length - 1];
         roomData.discardDeck.entries().forEach(([key, value]) => {
-            roomData.availableDeck.set(key, value);
+            if (key == lastCard) {
+                roomData.availableDeck.set(key, value - 1);
+                roomData.discardDeck.set(key, 1);
+            } else {
+                roomData.availableDeck.set(key, value);
+                roomData.discardDeck.set(key, 0);
+            }
         });
         return [choice, true];
     }

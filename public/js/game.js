@@ -148,12 +148,12 @@ function updateDeckCards(deckCardCount = 10) {
                     dragEndTween.kill();
                 } catch { }
             },
-            onDragEnd: function (pointerEvent) {
+            onDragEnd: async function (pointerEvent) {
                 isDragging = false;
 
                 const hit = this.hitTest(document.getElementById('self-cards'))
                 let isDrawSuccess = null;
-                if (hit) isDrawSuccess = onDrawingCard(deckCardCount);
+                if (hit) isDrawSuccess = await onDrawingCard(deckCardCount);
                 if (hit && !isDrawSuccess) invalidAnimation();
                 if (!hit || !isDrawSuccess) {
                     dragEndTween = gsap.to(this.target, {
@@ -212,12 +212,12 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
             cardElement.style.setProperty('--y-offset', offset[1]);
             gsap.to(this.target, { x: '-50%', y: 0, transform: 'rotate(0deg)', translate: 'var(--translate-default)', duration: 0 });
         },
-        onDragEnd: function (pointerEvent) {
+        onDragEnd: async function (pointerEvent) {
             isDragging = false;
             zDepth = 200;
             const hit = this.hitTest(document.getElementById('discard-pile'))
             let isThrowSuccess = null;
-            if (hit) isThrowSuccess = onThrowingCard(cardElement);
+            if (hit) isThrowSuccess = await onThrowingCard(cardElement);
             if (hit && !isThrowSuccess) invalidAnimation();
             if (!hit || !isThrowSuccess) {
                 cardElement.style.setProperty('--x-offset', '0px');
@@ -309,21 +309,21 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 }
 
 /*----------------------------------------------*/
-// Pure animation functions
+// Animation functions
 
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
-const discardDummy = document.getElementById('discard-dummy');
+const shuffleDummy = document.getElementById('shuffle-dummy');
 
 function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
-    userIndex = userCount == 1 ? 1.5 : userIndex;
-    userCount = userCount == 1 ? 2 : userCount;
+    userIndex = userCount == 1 ? 0.5 : userIndex;
+    userCount = userCount == 1 ? 1 : userCount;
 
     let playerX = rangeLerp(
         userIndex,
-        inputRangeStart = 1,
-        InputRangeEnd = userCount,
+        inputRangeStart = 0,
+        InputRangeEnd = userCount - 1,
         OutputRangeStart = otherPositions.getBoundingClientRect().left,
         OutputRangeEnd = otherPositions.getBoundingClientRect().right,
         capInput = false,
@@ -359,13 +359,13 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
 }
 
 function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10) {
-    userIndex = userCount == 1 ? 1.5 : userIndex;
-    userCount = userCount == 1 ? 2 : userCount;
+    userIndex = userCount == 1 ? 0.5 : userIndex;
+    userCount = userCount == 1 ? 1 : userCount;
 
     let playerX = rangeLerp(
         userIndex,
-        inputRangeStart = 1,
-        InputRangeEnd = userCount,
+        inputRangeStart = 0,
+        InputRangeEnd = userCount - 1,
         OutputRangeStart = otherPositions.getBoundingClientRect().left,
         OutputRangeEnd = otherPositions.getBoundingClientRect().right,
         capInput = false,
@@ -406,49 +406,94 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1
 function invalidAnimation(cardElement = '.card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
-gsap.registerPlugin(MotionPathPlugin);
-function shuffleDeckAnimation(pileSize = discardPile.children.length - 1) {
-    for (let i = 0; i < pileSize; i++) {
-        const cardDOM = `
-        <div class="card">
-            <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
-        </div>`;
 
-        discardDummy.appendChild(htmlToElement(cardDOM));
+async function shuffleDeckAnimation(maxPileSize = 10) {
+    let discardCount = discardPile.children.length - 1;
+    let drawingCount = drawingDeck.children.length;
+    let shuffledCount = 0;
+
+    const [discardBox, drawingBox, dummyBox] = [
+        discardPile.getBoundingClientRect(),
+        drawingDeck.getBoundingClientRect(),
+        shuffleDummy.getBoundingClientRect()
+    ];
+
+    const lastCard = discardPile.children[discardPile.children.length - 1];
+    const restDiscardCards = Array.from(discardPile.children).slice(0, discardPile.children.length - 1);
+
+    gsap.to(lastCard, {
+        x: "150%",
+        y: 0,
+        rotate: 0,
+        duration: 0.6,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+    });
+
+    while (discardCount + drawingCount) {
+        const randBool = Boolean(Math.round(Math.random()));
+        if (!drawingCount || (randBool && discardCount)) {
+            discardCount--;
+            const cardElement = discardPile.children[discardCount];
+            gsap.set(cardElement, {
+                zIndex: shuffledCount
+            });
+            gsap.to(cardElement, {
+                x: dummyBox.left - discardBox.left,
+                y: dummyBox.top - discardBox.top,
+                rotate: 0,
+                rotationY: 180,
+                duration: 0.35,
+                ease: CustomEase.create("", ".28,.0,.28,.99"),
+                onUpdate: () => {
+                    if (gsap.getProperty(cardElement, "rotationY") >= 90) {
+                        cardElement.querySelector('img').src = `/assets/cards/${userDeckSkin.val}/deck_backside.svg`;
+                        cardElement.querySelector('img').style.transform = 'scaleX(-1)';
+                    }
+                }
+            });
+        } else if (!discardCount || (!randBool && drawingCount)) {
+            drawingCount--;
+            const cardElement = drawingDeck.children[drawingCount];
+            gsap.set(cardElement, {
+                zIndex: shuffledCount
+            });
+            gsap.to(cardElement, {
+                x: dummyBox.left - drawingBox.left,
+                y: dummyBox.top - drawingBox.top,
+                rotate: 0,
+                duration: 0.35,
+                ease: CustomEase.create("", ".28,.0,.28,.99"),
+            });
+        }
+        shuffledCount++;
+        await new Promise(resolve => setTimeout(resolve, 250));
     }
 
-    gsap.fromTo('.discard-dummy .card', {
-        zIndex: (index, target) => 100 + pileSize - index,
-        x: discardPile.getBoundingClientRect().left,
-        y: discardPile.getBoundingClientRect().top,
-    }, {
-        motionPath: {
-            path: [{
-                x: discardPile.getBoundingClientRect().left,
-                y: discardPile.getBoundingClientRect().top,
-                rotationY: 0,
-            },
-            {
-                x: drawingDeck.getBoundingClientRect().left + (discardPile.getBoundingClientRect().left - drawingDeck.getBoundingClientRect().left) / 2,
-                y: drawingDeck.getBoundingClientRect().top - 50,
-                rotationY: 90,
-            },
-            {
-                x: drawingDeck.getBoundingClientRect().left,
-                y: drawingDeck.getBoundingClientRect().top,
-                rotationY: 0,
-            }],
-        },
-
-        duration: 1,
-        stagger: 0.125,
-        // ease: CustomEase.create("", ".49,-0.03,.2,.96"),
-        onComplete: () => {
-            Array.from(discardDummy.querySelectorAll('.card')).forEach(cardElement => {
-                discardDummy.removeChild(cardElement);
-            });
-        },
+    gsap.to(lastCard, {
+        x: lastCard.style.getPropertyValue('--x'),
+        y: lastCard.style.getPropertyValue('--y'),
+        rotate: lastCard.style.getPropertyValue('--ang'),
+        duration: 0.6,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+        clearProps: 'x, y, rotate',
     });
+    gsap.to(restDiscardCards, {
+        x: drawingBox.left - discardBox.left,
+        y: 0,
+        duration: 0.6,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+    });
+    gsap.to(drawingDeck.children, {
+        x: 0,
+        y: 0,
+        duration: 0.6,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+    });
+
+    setTimeout(() => {
+        restDiscardCards.forEach(element => discardPile.removeChild(element));
+        updateDeckCards(maxPileSize);
+    }, 600);
 }
 
 function groundCardAnimation() {
@@ -477,6 +522,18 @@ const wildColorBackdrop = document.getElementById('wild-color-backdrop');
 const colorWheelColors = document.querySelectorAll('.color-wheel .color');
 let wildColorSelectorTimeout;
 
+// wildColorSelector functionality
+colorWheelColors.forEach((colorWheelColor, index) => {
+    colorWheelColor.addEventListener('click', e => {
+        if (!wildColorSelector.classList.contains('hide')) {
+            socket.emit('set wildColor', {
+                selectedColor: ['green', 'yellow', 'blue', 'red'][index],
+            });
+            toggleWildColorSelector()
+        }
+    });
+});
+
 function toggleWildColorSelector() {
     if (wildColorSelector.classList.contains('hide')) {
         try {
@@ -503,6 +560,7 @@ function toggleWildColorSelector() {
         }, 1000);
     }
 }
+
 async function onThrowingCard(cardElement) {
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
@@ -511,7 +569,12 @@ async function onThrowingCard(cardElement) {
     const isValid = await new Promise(resolve => {
         socket.emit(
             'attempt throw',
-            { card: cardName, user: socket.data.userId },
+            {
+                user: socket.data.userId,
+                socketId: socket.id,
+                roomCode: null,
+                cardName: cardName,
+            },
             result => {
                 resolve(result);
             }
@@ -520,7 +583,7 @@ async function onThrowingCard(cardElement) {
 
     if (isValid) {
         // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
-        addPileCard(cardName);
+        addPileCard(cardName, socket.maxPileSize);
         selfCards.removeChild(cardElement);
         socket.selfCards.splice(index, 1);
         updateCardPositions();
@@ -529,27 +592,38 @@ async function onThrowingCard(cardElement) {
     return false;
 }
 
-function onDrawingCard(deckCardCount) {
-    const randBool = Boolean(Math.round(Math.random()));
-    if (randBool) {
-        socket.emit('draw cards', { count: 1, tillColor: null, grantUser: socket.data.userId, nonWild: null },
-            cards => {
-                // draw animation
-                addSelfCard(socket.selfCards.length, cards[0]);
-                socket.selfCards.push(cards[0]);
-
-                updateDeckCards(deckCardCount);
+async function onDrawingCard(deckCardCount) {
+    const drawResult = await new Promise(resolve => {
+        socket.emit(
+            'attempt draw',
+            {
+                user: socket.data.userId,
+                socketId: socket.id,
+                roomCode: null,
+            },
+            result => {
+                resolve(result);
             }
         );
+    });
+
+    if (drawResult) {
+        drawResult.forEach(card => {
+            addSelfCard(socket.selfCards.length, card);
+            socket.selfCards.push(card);
+        });
+        updateDeckCards(deckCardCount);
+        return true;
     }
-    return randBool;
+
+    return false;
 }
 
 /*----------------------------------------------*/
 // Additional socket functionality
 
 socket.on('reshuffle', data => {
-    shuffleDeckAnimation();
+    shuffleDeckAnimation(socket.maxPileSize);
 });
 
 socket.on('update turn', data => {
@@ -566,22 +640,27 @@ socket.on('update turn', data => {
     });
 });
 
-socket.on('draw deck', data => {
-    // update deck count
-    updateDeckCards(data.lastDeckCardCount);
-    if (data.user == socket.data.userId) {
-        socket.emit('draw cards', { count: data.count, tillColor: null, grantUser: socket.data.userId, },
-            (result) => {
-                result.forEach((card) => {
-                    // draw animation
-                    addSelfCard(socket.selfCards.length, card);
-                    socket.selfCards.push(card);
-                });
-            }
-        );
-    } else {
-        // draw other
-    }
+socket.on('throw other', data => {
+    if (socket.data.userId == data.exceptUser) return; // redundant
+    throwFromOther(
+        data.cardName,
+        Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
+        socket.roomData.permaUserSet.size,
+        socket.maxPileSize
+    )
+});
+
+socket.on('draw other', data => {
+    if (socket.data.userId == data.exceptUser) return; // redundant
+    drawToOther(
+        data.cardCount,
+        Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
+        socket.roomData.permaUserSet.size
+    )
+});
+
+socket.on('request wildColor', data => {
+    toggleWildColorSelector();
 });
 
 /*----------------------------------------------*/
@@ -622,7 +701,7 @@ updateDeckCards()
 socket.emit(
     (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
     (socket.joinType == 'rejoin' ? {} : {
-        count: 7, grantUser: socket.data.userId, tillColor: null, nonWild: null,
+        count: 7, grantUser: socket.data.userId, tillColor: null, nonAction: null,
     }),
     (result) => {
         result.forEach((card, index) => {
@@ -637,11 +716,11 @@ setTimeout(() => {
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
-        addPileCard(socket.roomData.lastPileCards[0], socket.roomData.lastPileCards.length);
+        addPileCard(socket.roomData.lastPileCards[0], socket.maxPileSize);
         groundCardAnimation();
     }, 100 + curtainAnimationTime)
 } else {
     socket.roomData.lastPileCards.forEach(card => {
-        addPileCard(card, socket.roomData.lastPileCards.length);
+        addPileCard(card, socket.maxPileSize);
     });
 }
