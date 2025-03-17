@@ -227,13 +227,34 @@ const attemptThrow = (socket, params) => {
         return false;
     }
 
-    if (groundCardParts[1] == 'wild' && (!wildColor || cardParts[1] != wildColor)) {
-        return false;
-    }
+    if (!(() => {
+        if (drawSum) {
+            console.log('drawsum', drawSum, preferences["Stack draw-2 and draw-4 cards"], cardParts[0], preferences["Stack draw-2 and draw-4 cards"] == 'enable'
+                && (cardParts[0] == 'draw' || cardParts[0] == 'draw4'));
 
-    if (!(cardParts[0] == groundCardParts[0] || cardParts[1] == groundCardParts[1])) {
-        // return false;
-        // for debugging
+            if (preferences["Stack draw-2 and draw-4 cards"] == 'enable'
+                && (cardParts[0] == 'draw' || cardParts[0] == 'draw4')) {
+                return true;
+            }
+            return false;
+        }
+
+        if (groundCardParts[1] == 'wild' && !wildColor) {
+            return false;
+        }
+        if (groundCardParts[1] == 'wild' && cardParts[1] == wildColor) {
+            return true;
+        }
+
+        if (cardParts[0] == groundCardParts[0] || cardParts[1] == groundCardParts[1]) {
+            return true;
+        }
+        if (cardParts[1] == 'wild') {
+            return true
+        }
+
+    })()) {
+        return false;
     }
 
     // if (groundCardParts[0] == 'draw' || groundCardParts[0] == 'draw4') {
@@ -316,12 +337,12 @@ const attemptThrow = (socket, params) => {
     //         ),
     //     });
     // }
-    // if (cardParts[0] == 'draw') {
-    //     roomsData.get(roomCode).gameData.drawSum += 2;
-    // }
-    // if (cardParts[0] == 'draw4') {
-    //     roomsData.get(roomCode).gameData.drawSum += 4;
-    // }
+    if (cardParts[0] == 'draw') {
+        roomsData.get(roomCode).gameData.drawSum += 2;
+    }
+    if (cardParts[0] == 'draw4') {
+        roomsData.get(roomCode).gameData.drawSum += 4;
+    }
 
     // increment user
     let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
