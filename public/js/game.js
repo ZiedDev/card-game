@@ -200,6 +200,9 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
         onPress: function (pointerEvent) {
             cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
         },
+        onRelease: function (pointerEvent) {
+            updateCardPositions();
+        },
         onDragStart: function (pointerEvent) {
             tablePiles.style.setProperty('z-index', 0);
             isDragging = true;
@@ -233,7 +236,6 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
                     },
                 });
             }
-            updateCardPositions();
         },
     });
 
@@ -403,7 +405,7 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1
     });
 }
 
-function invalidAnimation(cardElement = '.card') {
+function invalidAnimation(cardElement = '.self-cards .card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
 
