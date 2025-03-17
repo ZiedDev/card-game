@@ -298,6 +298,11 @@ const attemptThrow = (socket, params) => {
     if (cardParts[0] == 'draw4') {
         roomsData.get(roomCode).gameData.drawSum += 4;
     }
+    if (cardParts[0] == 'draw' || cardParts[0] == 'draw4') {
+        io.to(roomCode).emit('update drawSum', {
+            drawSum: roomsData.get(roomCode).gameData.drawSum
+        });
+    }
 
     // increment user
     let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
@@ -390,7 +395,10 @@ const attemptDraw = (socket, params) => {
             cardCount: drawSum,
             exceptUser: currUser,
         });
-        roomsData.get(roomCode).gameData.drawSum = 0
+        roomsData.get(roomCode).gameData.drawSum = 0;
+        io.to(roomCode).emit('update drawSum', {
+            drawSum: roomsData.get(roomCode).gameData.drawSum
+        });
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
             let nextUser = iteratorFuncs.get(roomsData.get(roomCode));

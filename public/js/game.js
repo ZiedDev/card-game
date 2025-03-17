@@ -316,6 +316,8 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
 const shuffleDummy = document.getElementById('shuffle-dummy');
+const hitmarker = document.getElementById('hitmarker');
+let hitmarkerTween;
 
 function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     cardCount = cardCount ? cardCount : Math.floor(Math.random() * 4 + 1);
@@ -518,75 +520,51 @@ function groundCardAnimation() {
     });
 }
 
-function hitmarkerAnimation() {
-    const hitmarker = document.getElementById('hitmarker');
+function hitmarkerAnimation(value = 0) {
+    try {
+        hitmarkerTween.kil();
+    } catch { }
 
-    const currentX = gsap.getProperty(hitmarker, "x");
-    const currentY = gsap.getProperty(hitmarker, "y");
+    hitmarker.innerText = escapeHtml('+' + value);
 
-    const randomRotation1 = gsap.utils.random(-45, 45);
+    if (value == 0) {
+        hitmarker.style = '';
+        return;
+    }
+
+    const randomRotation1 = gsap.utils.random(-30, 30);
     const randomRotation2 = randomRotation1 + gsap.utils.random(-10, 10);
     const randomXOffset = gsap.utils.random(-20, 20);
     const randomYOffset = gsap.utils.random(-20, 20);
+    const shakeDirection = Math.random() * Math.PI;
+    const time = rangeLerp(value, 0, 12, 3, 0.5, true, 1);
+    const strength = rangeLerp(value, 0, 12, 0, 10, true, 0);
 
-    gsap.fromTo(hitmarker, {
-        x: currentX + randomXOffset,
-        y: currentY + randomYOffset,
+    gsap.fromTo(hitmarker, 0.2, {
         rotation: randomRotation1,
         opacity: 0,
-        scale: 1.2,
+        scale: 1.4,
     }, {
+        x: randomXOffset,
+        y: randomYOffset,
         rotation: randomRotation2,
         opacity: 1,
         scale: 1,
-        duration: 0.2,
         ease: "power2.out",
         onComplete: () => {
-            gsap.to(hitmarker, {
-                duration: 0.5,
-                rotation: randomRotation2 + 10,
-                yoyo: true,
+            hitmarkerTween = gsap.fromTo(hitmarker, parseFloat(time), {
+                x: randomXOffset - Math.cos(shakeDirection),
+                y: randomYOffset - Math.sin(shakeDirection),
+                rotation: randomRotation2,
+            }, {
+                x: randomXOffset + Math.cos(shakeDirection),
+                y: randomYOffset + Math.sin(shakeDirection),
+                rotation: randomRotation2,
                 repeat: -1,
-                ease: RoughEase.ease.config({ strength: 5, points: 11, template: Linear.easeNone, randomize: false })
+                ease: RoughEase.ease.config({ strength: parseInt(strength), points: 11, template: Linear.easeNone, randomize: false }),
             });
         }
     });
-
-    // gsap.fromTo(
-    //     hitmarker, {
-    //     x: currentX + randomXOffset,
-    //     y: currentY + randomYOffset,
-    //     rotation: randomRotation,
-    //     opacity: 0,
-    //     scale: 1.2,
-    // }, {
-    //     opacity: 1,
-    //     scale: 1,
-    //     duration: 0.2,
-    //     ease: "power2.out",
-    //     onComplete: () => {
-    //         gsap.to(hitmarker, {
-    //             duration: 0.5,
-    //             scale: 1.1,
-    //             yoyo: true, // Shake back and forth
-    //             repeat: 3,
-    //             ease: RoughEase.create({ template: Power0.easeNone, strength: 2, points: 20, taper: "none", randomize: true, clamp: false }),
-    //             onComplete: () => {
-    //                 gsap.to(hitmarker, {
-    //                     opacity: 0,
-    //                     duration: 0.3, // Quick fade-out
-    //                     onComplete: () => {
-    //                         gsap.set(hitmarker, {
-    //                             x: currentX,
-    //                             y: currentY,
-    //                             rotation: 0,
-    //                         });
-    //                     },
-    //                 });
-    //             }
-    //         });
-    //     },
-    // });
 }
 
 /*----------------------------------------------*/
@@ -732,6 +710,11 @@ socket.on('draw other', data => {
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
         socket.roomData.permaUserSet.size
     )
+});
+
+socket.on('update drawSum', data => {
+    hitmarkerAnimation(data.drawSum);
+    socket.roomData.gameData.drawSum = data.drawSum;
 });
 
 socket.on('request wildColor', data => {
