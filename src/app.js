@@ -86,6 +86,7 @@ app.post('/createRoom', (req, res) => {
     roomsData.set(roomCode, {
         started: false,
         owner: req.body.userId,
+        maxPileSize: maxPileSize,
 
         users: new Set(),
         rejoinableUsers: new Set(),
@@ -104,7 +105,7 @@ app.post('/createRoom', (req, res) => {
             consecutiveDraws: 0,
         },
         lastPileCards: [],
-        maxPileSize: maxPileSize,
+        usersCardCounts: {},
 
         // not sended to client
         userIterator: null,
@@ -200,6 +201,7 @@ const drawCards = (socket, params) => {
     if (params.grantUser) {
         result.forEach(card => {
             roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
+            roomsData.get(roomCode).usersCardCounts[params.grantUser] = roomsData.get(roomCode).usersCards.get(params.grantUser).length;
         });
     }
 
@@ -314,6 +316,7 @@ const attemptThrow = (socket, params) => {
     const index = roomsData.get(roomCode).usersCards.get(currUser).indexOf(cardName);
     if (index > -1) {
         roomsData.get(roomCode).usersCards.get(currUser).splice(index, 1);
+        roomsData.get(roomCode).usersCardCounts[currUser] = roomsData.get(roomCode).usersCards.get(currUser).length;
     } else {
         console.log(`ERROR ${currUser} doesnt have card ${currUser} in [${roomsData.get(roomCode).usersCards.get(currUser)}]`)
     }
@@ -474,7 +477,7 @@ const attemptDraw = (socket, params) => {
                     cardCount: 1,
                     exceptUser: currUser,
                 });
-                // roomsData.get(roomCode).gameData.consecutiveDraws++;
+                roomsData.get(roomCode).gameData.consecutiveDraws++;
             }
             if (consecutiveDraws == 2 && noValidCard()) {
                 roomsData.get(roomCode).gameData.consecutiveDraws = 0;
@@ -548,6 +551,7 @@ io.on('connection', socket => {
         roomsData.get(data.roomCode).usersData[data.userId] = data;
         if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
             roomsData.get(data.roomCode).usersCards.set(data.userId, []);
+            roomsData.get(data.roomCode).usersCardCounts[data.userId] = 0;
         }
         if (roomsData.get(data.roomCode).owner == data.userId) {
             roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;

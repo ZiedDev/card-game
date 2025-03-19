@@ -683,14 +683,17 @@ socket.on('update turn', data => {
     socket.roomData = parseWithSets(data.roomData);
     socket.isSelfTurn = socket.roomData.gameData.currentPlayer == socket.data.userId;
 
-    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
     Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        const playerInfoId = playerInfo.id.replace('-player-info', '');
         playerInfo.classList.remove('turn');
-        if (playerInfo == nextTurnPlayerInfo) {
+        if (playerInfoId == socket.roomData.gameData.currentPlayer) {
             updateTurnIndicator(index);
-            nextTurnPlayerInfo.classList.add('turn');
+            playerInfo.classList.add('turn');
         }
+        playerInfo.querySelector('.player-cards-count').innerText = socket.roomData.usersCardCounts[playerInfoId];
     });
+
+    userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
 });
 
 socket.on('throw other', data => {
@@ -724,8 +727,9 @@ socket.on('request wildColor', data => {
 /*----------------------------------------------*/
 // Initialization and main running
 
-const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
+const userNickname = document.getElementById('user-nickname');
+const userCardsCount = document.getElementById('user-cards-count');
 const turnsList = document.getElementById('turns-list');
 const turnListUsers = document.getElementById('users-container');
 
@@ -737,7 +741,7 @@ Object.values(socket.roomData.usersData).forEach(user => {
         <div class="player-info" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
-          <div class="player-cards-count">6</div>
+          <div class="player-cards-count">7</div>
         </div>`;
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
