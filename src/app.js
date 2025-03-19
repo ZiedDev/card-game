@@ -20,7 +20,7 @@ const { generateRandomString,
     iteratorFuncs,
     pullAndUpdateAvailableDeck,
 } = require('./funcs');
-const cardCount = require('./uno_card_count.json');
+const cardCount = require('./wa7ed_card_count.json');
 
 // route imports
 
@@ -639,9 +639,8 @@ io.on('connection', socket => {
     socket.on('set wildColor', data => {
         let roomCode = socketsData.get(socket.id).roomCode;
         roomsData.get(roomCode).gameData.wildColor = data.selectedColor;
+        io.to(roomCode).emit('update wildColor', { selectedColor: data.selectedColor });
     });
-
-    // socket.on('throw card', throwCard); // deprecated
 
     socket.on('test', () => {
         console.log('TEST:');

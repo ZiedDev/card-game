@@ -724,6 +724,12 @@ socket.on('request wildColor', data => {
     toggleWildColorSelector();
 });
 
+socket.on('update wildColor', data => {
+    socket.roomData.gameData.wildColor = data.selectedColor;
+    const lastWildCard = discardPile.children[discardPile.children.length - 1];
+    lastWildCard.querySelector('img').src = lastWildCard.querySelector('img').src.replace('.svg', `_${data.selectedColor}.svg`);
+});
+
 /*----------------------------------------------*/
 // Initialization and main running
 
