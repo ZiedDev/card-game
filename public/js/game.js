@@ -91,6 +91,9 @@ function getRandomCard() { // placeholder
 /*----------------------------------------------*/
 // Updating functions
 
+const unoButton = document.getElementById('uno-button');
+const skipButton = document.getElementById('skip-button');
+
 function updateTurnIndicator(index) {
     const turnIndicator = document.getElementById('turn-indicator');
     const player = document.querySelectorAll('.player-info')[index];
@@ -167,6 +170,16 @@ function updateDeckCards(deckCardCount = 10) {
                 }
             },
         });
+    }
+}
+
+function updateSkipButton(toggle = undefined) {
+    if (toggle === true) {
+        skipButton.disabled = false;
+    } else if (toggle === false) {
+        skipButton.disabled = true;
+    } else {
+        skipButton.disabled = !skipButton.disabled;
     }
 }
 

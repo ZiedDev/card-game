@@ -30,7 +30,14 @@ playButton.addEventListener('click', async e => {
     let nickname = nicknameInput.value
     if (nickname) {
         if (urlParams.get('r') && !(await getUsernameValid(nickname, urlParams.get('r')))) {
-            alert('Nickname already taken in room');
+            createModal(
+                "Nickname already taken in room",
+                [],
+                [
+                    "Okay",
+                    () => { }
+                ]
+            );
             return;
         }
 
@@ -50,7 +57,14 @@ playButton.addEventListener('click', async e => {
         }, animationEndTime);
 
     } else {
-        alert('Nickname cant be empty');
+        createModal(
+            "Nickname cant be empty",
+            [],
+            [
+                "Okay",
+                () => { }
+            ]
+        );
     }
 })
 
@@ -74,6 +88,7 @@ const confirmCustomizationButton = document.getElementById('confirm-customizatio
 const cardBorderInput = document.getElementById('card-border-input');
 const deckSkinsContainer = document.getElementById('deck-skins-container');
 const customizeButtonIcon = document.getElementById('customize-button-icon');
+const resetCustomizationButton = document.getElementById('reset-customization-button');
 
 customizeButton.addEventListener('click', e => {
     customizationMenu.classList.add('customization-menu-open');
@@ -110,3 +125,21 @@ for (let i = 1; i <= Object.keys(deckSkinWildColors).length; i++) {
         customizeButtonIcon.src = `/assets/cards/${userDeckSkin.val}/deck_logo.svg`;
     });
 }
+
+resetCustomizationButton.addEventListener('click', e => {
+    createModal(
+        "Are you sure?",
+        ["This action cannot be undone"],
+        [
+            "Reset",
+            () => {
+                _resetUserStorage();
+                window.location.reload();
+            }
+        ],
+        [
+            "Cancel",
+            () => { }
+        ]
+    );
+});

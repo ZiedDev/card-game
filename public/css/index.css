@@ -4,6 +4,7 @@ body {
 }
 
 .page-container {
+    margin: auto;
     display: grid;
     grid-template-columns: auto 1fr 1fr;
     grid-template-rows: 1fr 1fr 1fr;
@@ -215,6 +216,7 @@ body {
     gap: 1rem;
 }
 
+.reset-customization-button,
 .confirm-customization-button {
     align-self: end;
     cursor: pointer;
@@ -229,6 +231,18 @@ body {
     border: 0;
     outline: 0;
     transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
+}
+
+.reset-customization-button {
+    position: absolute;
+    top: 0;
+    right: 2rem;
+    background-color: var(--accent-green-alt);
+}
+
+.reset-customization-button:active {
+    background-color: var(--accent-green-alt-darker);
+    border-top: inset var(--gray) 0.5rem;
 }
 
 .confirm-customization-button:active {

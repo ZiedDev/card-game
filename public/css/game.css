@@ -480,3 +480,52 @@ body {
 
     pointer-events: none;
 }
+
+.game-buttons {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.uno-button,
+.skip-button {
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 18pt;
+    background-color: var(--accent-green);
+    border-radius: 2.25rem;
+    margin-top: 1.5rem;
+    height: 3.75rem;
+    width: 11.25rem;
+    border: 0;
+    outline: 0;
+    transition: background-color 25ms ease, border-top 50ms ease, border-bottom 50ms ease;
+}
+
+.skip-button {
+    background-color: var(--accent-green-alt);
+    position: relative;
+}
+
+.uno-button:active {
+    background-color: var(--accent-green-darker);
+    border-top: inset var(--gray) 0.5rem;
+}
+
+.skip-button:active {
+    background-color: var(--accent-green-alt-darker);
+    border-top: inset var(--gray) 0.5rem;
+}
+
+.skip-button:disabled {
+    cursor: default;
+    background-color: var(--gray);
+    border-top: inset var(--gray) 0.5rem;
+}
+
+.skip-button:active:disabled {
+    background-color: var(--gray);
+    border-top: inset var(--gray) 0.5rem;
+}

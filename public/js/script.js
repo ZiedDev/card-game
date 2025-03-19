@@ -79,6 +79,7 @@ if (currVersion != userVersion.val) {
     userVersion.val = currVersion;
     console.log('restart');
     _resetUserStorage();
+    window.location.reload();
 }
 
 let userId = new StoredValue('userId', '');
