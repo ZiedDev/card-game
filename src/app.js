@@ -185,12 +185,14 @@ const drawCards = (socket, params) => {
         let reshuffle;
         while (choice.split('_')[1] != params.tillColor) {
             [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
+            if (choice === null) return null;
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
         }
     } else {
         for (let i = 0; i < params.count; i++) {
             let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
+            if (choice === null) return null;
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
         }
@@ -381,6 +383,7 @@ const attemptDraw = (socket, params) => {
 
     if (stackDraw && wildColor) {
         result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
+        if (result == null) return null;
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: result.length,
             exceptUser: currUser,
@@ -399,6 +402,7 @@ const attemptDraw = (socket, params) => {
 
     if (drawSum) {
         result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonAction: null, });
+        if (result == null) return null;
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: drawSum,
             exceptUser: currUser,
@@ -422,9 +426,10 @@ const attemptDraw = (socket, params) => {
     const noValidCard = () => !roomsData.get(roomCode).usersCards.get(currUser).some(card => {
         return checkThrowValidity(card.split('_'), groundCardParts, drawSum, wildColor, preferences);
     })
-    if (noValidCard()) {
+    if (preferences["Allow drawing even with a valid card"] == 'enable' || noValidCard()) {
         if (preferences["Continue to Draw Until You Can Play"] == 'enable') {
             result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
+            if (result == null) return null;
             io.to(roomCode).except(socketId).emit('draw other', {
                 cardCount: 1,
                 exceptUser: currUser,
@@ -432,10 +437,12 @@ const attemptDraw = (socket, params) => {
         } else if (preferences["Continue to Draw Until You Can Play"] == 'maximum 2 cards') {
             if (consecutiveDraws < 2) {
                 result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
+                if (result == null) return null;
                 io.to(roomCode).except(socketId).emit('draw other', {
                     cardCount: 1,
                     exceptUser: currUser,
                 });
+                // roomsData.get(roomCode).gameData.consecutiveDraws++;
             }
             if (consecutiveDraws == 2 && noValidCard()) {
                 roomsData.get(roomCode).gameData.consecutiveDraws = 0;
@@ -447,12 +454,6 @@ const attemptDraw = (socket, params) => {
             }
         }
         return result;
-    } else if (preferences["Allow drawing even with a valid card"] == 'enable') {
-        result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
-        io.to(roomCode).except(socketId).emit('draw other', {
-            cardCount: 1,
-            exceptUser: currUser,
-        });
     }
 
 
