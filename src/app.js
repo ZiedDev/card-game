@@ -383,7 +383,14 @@ const attemptDraw = (socket, params) => {
 
     if (stackDraw && wildColor) {
         result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
-        if (result == null) return null;
+        if (result == null) {
+            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(roomsData.get(roomCode))
+            });
+            return skip;
+        };
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: result.length,
             exceptUser: currUser,
@@ -402,7 +409,14 @@ const attemptDraw = (socket, params) => {
 
     if (drawSum) {
         result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonAction: null, });
-        if (result == null) return null;
+        if (result == null) {
+            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(roomsData.get(roomCode))
+            });
+            return skip;
+        }
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: drawSum,
             exceptUser: currUser,
@@ -429,7 +443,16 @@ const attemptDraw = (socket, params) => {
     if (preferences["Allow drawing even with a valid card"] == 'enable' || noValidCard()) {
         if (preferences["Continue to Draw Until You Can Play"] == 'enable') {
             result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
-            if (result == null) return null;
+            if (result == null) {
+                if (preferences["Allow drawing even with a valid card"] != 'enable') {
+                    let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+                    roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+                    io.to(roomCode).emit('update turn', {
+                        roomData: stringifyWithSets(roomsData.get(roomCode))
+                    });
+                }
+                return skip;
+            };
             io.to(roomCode).except(socketId).emit('draw other', {
                 cardCount: 1,
                 exceptUser: currUser,
@@ -437,7 +460,16 @@ const attemptDraw = (socket, params) => {
         } else if (preferences["Continue to Draw Until You Can Play"] == 'maximum 2 cards') {
             if (consecutiveDraws < 2) {
                 result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
-                if (result == null) return null;
+                if (result == null) {
+                    if (preferences["Allow drawing even with a valid card"] != 'enable') {
+                        let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
+                        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+                        io.to(roomCode).emit('update turn', {
+                            roomData: stringifyWithSets(roomsData.get(roomCode))
+                        });
+                    }
+                    return skip;
+                };
                 io.to(roomCode).except(socketId).emit('draw other', {
                     cardCount: 1,
                     exceptUser: currUser,
