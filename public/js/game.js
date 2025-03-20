@@ -535,7 +535,7 @@ function groundCardAnimation() {
 
 function hitmarkerAnimation(value = 0) {
     try {
-        hitmarkerTween.kil();
+        hitmarkerTween.kill();
     } catch { }
 
     hitmarker.innerText = escapeHtml('+' + value);
@@ -577,6 +577,27 @@ function hitmarkerAnimation(value = 0) {
                 ease: RoughEase.ease.config({ strength: parseInt(strength), points: 11, template: Linear.easeNone, randomize: false }),
             });
         }
+    });
+}
+
+function wildColorChangeAnimation(color = 'red') {
+    const lastWildCard = discardPile.children[discardPile.children.length - 1];
+
+    const topImage = lastWildCard.appendChild(document.createElement('img'));
+    topImage.src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
+
+    const [originX, originY] = [Math.random() * 100, Math.random() * 100];
+
+    gsap.fromTo(topImage, {
+        clipPath: `padding-box circle(0% at ${originX} ${originY}%)`,
+    }, {
+        clipPath: `padding-box circle(200% at ${originX}% ${originY}%)`,
+        duration: 2,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+        onComplete: () => {
+            lastWildCard.querySelector('img').src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
+            // lastWildCard.removeChild(topImage);
+        },
     });
 }
 
@@ -696,14 +717,17 @@ socket.on('update turn', data => {
     socket.roomData = parseWithSets(data.roomData);
     socket.isSelfTurn = socket.roomData.gameData.currentPlayer == socket.data.userId;
 
-    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
     Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        const playerInfoId = playerInfo.id.replace('-player-info', '');
         playerInfo.classList.remove('turn');
-        if (playerInfo == nextTurnPlayerInfo) {
+        if (playerInfoId == socket.roomData.gameData.currentPlayer) {
             updateTurnIndicator(index);
-            nextTurnPlayerInfo.classList.add('turn');
+            playerInfo.classList.add('turn');
         }
+        playerInfo.querySelector('.player-cards-count').innerText = socket.roomData.usersCardCounts[playerInfoId];
     });
+
+    userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
 });
 
 socket.on('throw other', data => {
@@ -734,11 +758,17 @@ socket.on('request wildColor', data => {
     toggleWildColorSelector();
 });
 
+socket.on('update wildColor', data => {
+    socket.roomData.gameData.wildColor = data.selectedColor;
+    wildColorChangeAnimation(data.selectedColor);
+});
+
 /*----------------------------------------------*/
 // Initialization and main running
 
-const userNickname = document.getElementById('user-nickname');
 const userIcon = document.getElementById('user-icon');
+const userNickname = document.getElementById('user-nickname');
+const userCardsCount = document.getElementById('user-cards-count');
 const turnsList = document.getElementById('turns-list');
 const turnListUsers = document.getElementById('users-container');
 
@@ -750,7 +780,7 @@ Object.values(socket.roomData.usersData).forEach(user => {
         <div class="player-info" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
-          <div class="player-cards-count">6</div>
+          <div class="player-cards-count">7</div>
         </div>`;
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
