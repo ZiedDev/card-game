@@ -263,6 +263,15 @@ body {
     translate: var(--x) var(--y);
 }
 
+.discard-pile .card img:nth-child(2) {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    clip-path: padding-box circle(0% at 0% 0%);
+}
+
 .turns-list {
     --turn-list-height: 0px;
 

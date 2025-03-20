@@ -567,6 +567,27 @@ function hitmarkerAnimation(value = 0) {
     });
 }
 
+function wildColorChangeAnimation(color = 'red') {
+    const lastWildCard = discardPile.children[discardPile.children.length - 1];
+
+    const topImage = lastWildCard.appendChild(document.createElement('img'));
+    topImage.src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
+
+    const [originX, originY] = [Math.random() * 100, Math.random() * 100];
+
+    gsap.fromTo(topImage, {
+        clipPath: `padding-box circle(0% at ${originX} ${originY}%)`,
+    }, {
+        clipPath: `padding-box circle(200% at ${originX}% ${originY}%)`,
+        duration: 2,
+        ease: CustomEase.create("", ".28,.0,.28,.99"),
+        onComplete: () => {
+            lastWildCard.querySelector('img').src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
+            // lastWildCard.removeChild(topImage);
+        },
+    });
+}
+
 /*----------------------------------------------*/
 
 const wildColorSelector = document.getElementById('wild-color-selector');
@@ -726,8 +747,7 @@ socket.on('request wildColor', data => {
 
 socket.on('update wildColor', data => {
     socket.roomData.gameData.wildColor = data.selectedColor;
-    const lastWildCard = discardPile.children[discardPile.children.length - 1];
-    lastWildCard.querySelector('img').src = lastWildCard.querySelector('img').src.replace('.svg', `_${data.selectedColor}.svg`);
+    wildColorChangeAnimation(data.selectedColor);
 });
 
 /*----------------------------------------------*/
