@@ -522,7 +522,7 @@ function groundCardAnimation() {
 
 function hitmarkerAnimation(value = 0) {
     try {
-        hitmarkerTween.kil();
+        hitmarkerTween.kill();
     } catch { }
 
     hitmarker.innerText = escapeHtml('+' + value);
