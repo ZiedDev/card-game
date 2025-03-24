@@ -5,7 +5,7 @@ const nicknameInput = document.getElementById('nickname-input');
 const userImage = document.getElementById('user-image');
 const userImageReload = document.getElementById('user-image-reload');
 
-const pfpNum = 10;
+const pfpNum = 12;
 
 if (urlParams.get('r')) {
     playButton.textContent = 'Join';
