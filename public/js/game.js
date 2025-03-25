@@ -784,7 +784,9 @@ Object.values(socket.roomData.usersData).forEach(user => {
         </div>`;
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
-turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
+setTimeout(() => {
+    turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
+}, 100);
 
 const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
 Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
