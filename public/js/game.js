@@ -326,6 +326,7 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 /*----------------------------------------------*/
 // Animation functions
 
+const discardPileAnimationQueue = new AutoQueue();
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
 const shuffleDummy = document.getElementById('shuffle-dummy');
@@ -378,7 +379,7 @@ function drawToOther(cardCount = null, userIndex = 1, userCount = 1) {
     });
 }
 
-function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10) {
+function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1, maxPileSize = 10, resolve = () => { }) {
     userIndex = userCount == 1 ? 0.5 : userIndex;
     userCount = userCount == 1 ? 1 : userCount;
 
@@ -419,6 +420,7 @@ function throwFromOther(cardName = getRandomCard(), userIndex = 0, userCount = 1
         onComplete: () => {
             otherPositionsContainer.removeChild(cardElement);
             addPileCard(cardName, maxPileSize, randomizedVariables);
+            resolve();
         },
     });
 }
@@ -669,11 +671,13 @@ async function onThrowingCard(cardElement) {
     });
 
     if (isValid) {
-        // socket.emit('throw card', { card: socket.selfCards[index], remUser: socket.data.userId }); // DONT FORGET TO REMOVE
-        addPileCard(cardName, socket.maxPileSize);
-        selfCards.removeChild(cardElement);
-        socket.selfCards.splice(index, 1);
-        updateCardPositions();
+        discardPileAnimationQueue.push(resolve => {
+            addPileCard(cardName, socket.maxPileSize);
+            selfCards.removeChild(cardElement);
+            socket.selfCards.splice(index, 1);
+            updateCardPositions();
+            resolve();
+        });
         return true;
     }
     return false;
@@ -732,12 +736,13 @@ socket.on('update turn', data => {
 
 socket.on('throw other', data => {
     if (socket.data.userId == data.exceptUser) return; // redundant
-    throwFromOther(
+    discardPileAnimationQueue.push(resolve => throwFromOther(
         data.cardName,
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
         socket.roomData.permaUserSet.size,
-        socket.maxPileSize
-    )
+        socket.maxPileSize,
+        resolve
+    ));
 });
 
 socket.on('draw other', data => {

@@ -27,6 +27,47 @@ class StoredValue {
     }
 }
 
+class AutoQueue {
+    constructor() {
+        this.paused = false;
+        this.processing = false;
+        this.queue = [];
+    }
+    push(element) {
+        this.queue.push(element);
+        if (!this.paused) this.process();
+    }
+    process() {
+        this.paused = false;
+        if (this.processing || this.queue.length === 0) return;
+        this.processing = true;
+        let current = this.queue.shift();
+        if (Array.isArray(current)) {
+            Promise.all(current.map(
+                subElement => new Promise(resolve => subElement(resolve))
+            )).then(() => {
+                this.processing = false;
+                if (!this.paused) this.process();
+            });
+        } else {
+            new Promise(
+                resolve => current(resolve)
+            ).then(() => {
+                this.processing = false;
+                if (!this.paused) this.process();
+            });
+        }
+    }
+    pause() {
+        this.paused = true;
+    }
+    clear() {
+        this.paused = false;
+        this.processing = false;
+        this.queue.length = 0;
+    }
+}
+
 const deckSkinWildColors = {
     skin_1: ["#acc77e", "#ebc968", "#428bca", "#cb666a"],
     skin_2: ["#83c040", "#ffd136", "#0078ba", "#da3e25"],
