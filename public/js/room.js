@@ -196,12 +196,21 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
             socket.roomData.rejoinableUsers.delete(userData.userId);
             socket.roomData.users.add(userData.userId);
             // remove from random ai mode
-            document.getElementById(`${userData.userId}-player-info`).classList.remove('away');
+            const playerInfo = document.getElementById(`${userData.userId}-player-info`);
+            if (playerInfo) {
+                playerInfo.classList.remove('away');
+                if (socket.roomData.gameData && socket.roomData.gameData.currentPlayer == userData.userId) {
+                    playerInfo.classList.add('turn');
+                }
+            }
         } else if (!connecting && rejoin) {
             socket.roomData.rejoinableUsers.add(userData.userId);
             socket.roomData.users.delete(userData.userId);
             // put on random ai mode
-            document.getElementById(`${userData.userId}-player-info`).classList.add('away');
+            const playerInfo = document.getElementById(`${userData.userId}-player-info`);
+            if (playerInfo) {
+                playerInfo.classList.add('away');
+            }
         }
     });
 

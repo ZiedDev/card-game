@@ -108,7 +108,7 @@
     cursor: pointer;
 }
 
-.backdrop {
+.modal-container .backdrop {
     position: absolute;
     z-index: 95;
     top: 0;

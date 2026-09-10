@@ -176,7 +176,7 @@ async function createRoom() {
             window.location.href = '/room/' + resRoomCode + '?c=1';
         })
     }).catch(err => {
-        console.info(err + " url: " + url);
+        console.error(err);
     });
 }
 

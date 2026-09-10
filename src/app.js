@@ -17,7 +17,11 @@ const { generateRandomString,
     sumMap,
     weightedRandomChoice,
     randomChoice,
+    advanceTurn,
+    setCurrentPlayer,
+    getNextPlayer,
     iteratorFuncs,
+    reshuffleDiscardIntoAvailable,
     pullAndUpdateAvailableDeck,
 } = require('./funcs');
 const cardCount = require('./wa7ed_card_count.json');
@@ -179,33 +183,38 @@ app.use((req, res, next) => {
 
 
 const drawCards = (socket, params) => {
-    let roomCode = socketsData.get(socket.id).roomCode;
+    let roomCode = params.roomCode || (socket && socketsData.get(socket.id) && socketsData.get(socket.id).roomCode);
+    if (!roomCode || !roomsData.has(roomCode)) return null;
+    const room = roomsData.get(roomCode);
     let result = [];
     if (params.tillColor) {
         let choice = ' _ ';
         let reshuffle;
-        while (choice.split('_')[1] != params.tillColor) {
-            [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
-            if (choice === null) return null;
+        let attempts = 0;
+        while (choice.split('_')[1] != params.tillColor && attempts < 150) {
+            [choice, reshuffle] = pullAndUpdateAvailableDeck(room, params.nonAction);
+            if (choice === null) break;
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
+            attempts++;
         }
     } else {
         for (let i = 0; i < params.count; i++) {
-            let [choice, reshuffle] = pullAndUpdateAvailableDeck(roomsData.get(roomCode), params.nonAction);
-            if (choice === null) return null;
+            let [choice, reshuffle] = pullAndUpdateAvailableDeck(room, params.nonAction);
+            if (choice === null) break;
             result.push(choice);
             if (reshuffle) io.to(roomCode).emit('reshuffle');
         }
     }
-    if (params.grantUser) {
-        result.forEach(card => {
-            roomsData.get(roomCode).usersCards.get(params.grantUser).push(card);
-            roomsData.get(roomCode).usersCardCounts[params.grantUser] = roomsData.get(roomCode).usersCards.get(params.grantUser).length;
-        });
+    if (params.grantUser && result.length > 0) {
+        const hand = room.usersCards.get(params.grantUser);
+        if (hand) {
+            result.forEach(card => hand.push(card));
+            room.usersCardCounts[params.grantUser] = hand.length;
+        }
     }
 
-    return result;
+    return result.length > 0 ? result : null;
 };
 
 const checkThrowValidity = (cardParts, groundCardParts, drawSum, wildColor, stackDraw, preferences) => {
@@ -237,26 +246,36 @@ const checkThrowValidity = (cardParts, groundCardParts, drawSum, wildColor, stac
 }
 
 const attemptThrow = (socket, params) => {
-    let roomCode = params.roomCode || socketsData.get(socket.id).roomCode;
+    let roomCode = params.roomCode || (socket && socketsData.get(socket.id) && socketsData.get(socket.id).roomCode);
+    if (!roomCode || !roomsData.has(roomCode)) return false;
+    const room = roomsData.get(roomCode);
+    if (room.finished) return false;
 
     const socketId = params.socketId;
-    const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
     const currUser = params.user;
-    const isSelfTurn = roomsData.get(roomCode).gameData.currentPlayer == currUser;
+    const isSelfTurn = room.gameData.currentPlayer == currUser;
     const cardName = params.cardName;
+    if (!cardName) return false;
+
+    const userHand = room.usersCards.get(currUser);
+    if (!userHand) return false;
+    const index = userHand.indexOf(cardName);
+    if (index === -1) {
+        console.log(`ERROR ${currUser} doesnt have card ${cardName} in [${userHand}]`);
+        return false;
+    }
+
     const cardParts = cardName.split('_');
-    const groundCard = roomsData.get(roomCode).gameData.groundCard;
+    const groundCard = room.gameData.groundCard;
     const groundCardParts = groundCard.split('_');
-    const prevGroundCard = roomsData.get(roomCode).gameData.prevGroundCard;
-    const prevGroundCardParts = prevGroundCard ? prevGroundCard.split('_') : null;
-    const drawSum = roomsData.get(roomCode).gameData.drawSum;
-    const wildColor = roomsData.get(roomCode).gameData.wildColor;
-    const stackDraw = roomsData.get(roomCode).gameData.stackDraw;
-    const preferences = roomsData.get(roomCode).gamePreferences;
+    const drawSum = room.gameData.drawSum;
+    const wildColor = room.gameData.wildColor;
+    const stackDraw = room.gameData.stackDraw;
+    const preferences = room.gamePreferences;
 
     // jump in
     if (preferences["Jump-in"] == 'enable' && !isSelfTurn && cardParts[1] != 'wild' && cardName == groundCard) {
-        iteratorFuncs.set(roomsData.get(roomCode), currUser);
+        setCurrentPlayer(room, currUser);
     }
     else if (!isSelfTurn) {
         return false;
@@ -267,83 +286,90 @@ const attemptThrow = (socket, params) => {
     }
 
     // successful throw
+    const isGameOver = userHand.length === 1;
 
+    room.gameData.consecutiveDraws = 0;
+
+    let step = 1;
     // reverse iterator if reverse
     if (cardParts[0] == 'reverse') {
-        roomsData.get(roomCode).gameData.direction = roomsData.get(roomCode).gameData.direction == 'cw' ? 'acw' : 'cw';
-        iteratorFuncs.set(roomsData.get(roomCode), prevUser);
-
-        if (roomsData.get(roomCode).permaUserSet.size == 2) {
-            iteratorFuncs.get(roomsData.get(roomCode));
+        room.gameData.direction = room.gameData.direction == 'cw' ? 'acw' : 'cw';
+        if (room.permaUserSet && room.permaUserSet.size == 2) {
+            step = 2;
         }
+    } else if (cardParts[0] == 'skip') {
+        step = 2;
     }
 
-    // extra increment if skip
-    if (cardParts[0] == 'skip') {
-        iteratorFuncs.get(roomsData.get(roomCode));
-    }
-
-    // update wildColor if wild
-    // if not preset wildColor rando user
-    if (cardParts[1] == 'wild') {
-        roomsData.get(roomCode).gameData.wildColor = null;
+    // update wildColor if wild (only if game is continuing)
+    if (cardParts[1] == 'wild' && !isGameOver) {
+        room.gameData.wildColor = null;
         io.to(socketId).emit('request wildColor');
     }
 
     // update stackDraw if stack
     if (cardParts[0] == 'stack') {
-        roomsData.get(roomCode).gameData.stackDraw = true;
+        room.gameData.stackDraw = true;
     }
 
     // add to drawSum if draw
     if (cardParts[0] == 'draw') {
-        roomsData.get(roomCode).gameData.drawSum += 2;
+        room.gameData.drawSum += 2;
     }
     if (cardParts[0] == 'draw4') {
-        roomsData.get(roomCode).gameData.drawSum += 4;
+        room.gameData.drawSum += 4;
     }
     if (cardParts[0] == 'draw' || cardParts[0] == 'draw4') {
         io.to(roomCode).emit('update drawSum', {
-            drawSum: roomsData.get(roomCode).gameData.drawSum
+            drawSum: room.gameData.drawSum
         });
     }
 
     // increment user
-    let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-    roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+    let nextUser = advanceTurn(room, step);
 
     // remove card from user
-    const index = roomsData.get(roomCode).usersCards.get(currUser).indexOf(cardName);
-    if (index > -1) {
-        roomsData.get(roomCode).usersCards.get(currUser).splice(index, 1);
-        roomsData.get(roomCode).usersCardCounts[currUser] = roomsData.get(roomCode).usersCards.get(currUser).length;
-    } else {
-        console.log(`ERROR ${currUser} doesnt have card ${currUser} in [${roomsData.get(roomCode).usersCards.get(currUser)}]`)
-    }
+    userHand.splice(index, 1);
+    room.usersCardCounts[currUser] = userHand.length;
 
     // update cards
-    roomsData.get(roomCode).gameData.prevGroundCard = groundCard;
-    roomsData.get(roomCode).gameData.groundCard = cardName;
+    room.gameData.prevGroundCard = groundCard;
+    room.gameData.groundCard = cardName;
 
-    roomsData.get(roomCode).lastPileCards.push(cardName);
-    if (roomsData.get(roomCode).lastPileCards.length > maxPileSize) {
-        roomsData.get(roomCode).lastPileCards.shift();
+    room.lastPileCards.push(cardName);
+    if (room.lastPileCards.length > maxPileSize) {
+        room.lastPileCards.shift();
     }
 
-    roomsData.get(roomCode).discardDeck.set(
+    room.discardDeck.set(
         cardName,
-        roomsData.get(roomCode).discardDeck.get(cardName) + 1
-    )
+        (room.discardDeck.get(cardName) || 0) + 1
+    );
+
+    if (isGameOver) {
+        room.finished = true;
+        room.gameData.winner = currUser;
+    }
 
     // socket emits
     io.to(roomCode).emit('update turn', {
-        roomData: stringifyWithSets(roomsData.get(roomCode))
+        roomData: stringifyWithSets(room)
     });
 
     io.to(roomCode).except(socketId).emit('throw other', {
         cardName: cardName,
         exceptUser: currUser,
     });
+
+    if (isGameOver) {
+        const winnerData = room.usersData[currUser] || {};
+        io.to(roomCode).emit('game over', {
+            winnerId: currUser,
+            winnerName: winnerData.userName || 'Player',
+            winnerPfp: winnerData.userPfp !== undefined ? winnerData.userPfp : 0,
+            roomData: stringifyWithSets(room)
+        });
+    }
 
     return true;
 };
@@ -365,20 +391,21 @@ const throwCard = data => { // deprecated
 }
 
 const attemptDraw = (socket, params) => {
-    let roomCode = params.roomCode || socketsData.get(socket.id).roomCode;
-    let result = null;
+    let roomCode = params.roomCode || (socket && socketsData.get(socket.id) && socketsData.get(socket.id).roomCode);
+    if (!roomCode || !roomsData.has(roomCode)) return null;
+    const room = roomsData.get(roomCode);
+    if (room.finished) return null;
 
+    let result = null;
     const socketId = params.socketId;
-    const prevUser = roomsData.get(roomCode).gameData.currentPlayer;
     const currUser = params.user;
-    const isSelfTurn = roomsData.get(roomCode).gameData.currentPlayer == currUser;
-    const groundCard = roomsData.get(roomCode).gameData.groundCard;
+    const isSelfTurn = room.gameData.currentPlayer == currUser;
+    const groundCard = room.gameData.groundCard;
     const groundCardParts = groundCard.split('_');
-    const drawSum = roomsData.get(roomCode).gameData.drawSum;
-    const wildColor = roomsData.get(roomCode).gameData.wildColor;
-    const stackDraw = roomsData.get(roomCode).gameData.stackDraw;
-    const consecutiveDraws = roomsData.get(roomCode).gameData.consecutiveDraws;
-    const preferences = roomsData.get(roomCode).gamePreferences;
+    const drawSum = room.gameData.drawSum;
+    const wildColor = room.gameData.wildColor;
+    const stackDraw = room.gameData.stackDraw;
+    const preferences = room.gamePreferences;
 
     if (!isSelfTurn) {
         return false;
@@ -387,24 +414,24 @@ const attemptDraw = (socket, params) => {
     if (stackDraw && wildColor) {
         result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
         if (result == null) {
-            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
             io.to(roomCode).emit('update turn', {
-                roomData: stringifyWithSets(roomsData.get(roomCode))
+                roomData: stringifyWithSets(room)
             });
-            return skip;
-        };
+            return null;
+        }
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: result.length,
             exceptUser: currUser,
         });
-        roomsData.get(roomCode).gameData.stackDraw = false;
+        room.gameData.stackDraw = false;
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
-            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
             io.to(roomCode).emit('update turn', {
-                roomData: stringifyWithSets(roomsData.get(roomCode))
+                roomData: stringifyWithSets(room)
             });
         }
         return result;
@@ -413,84 +440,85 @@ const attemptDraw = (socket, params) => {
     if (drawSum) {
         result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonAction: null, });
         if (result == null) {
-            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
             io.to(roomCode).emit('update turn', {
-                roomData: stringifyWithSets(roomsData.get(roomCode))
+                roomData: stringifyWithSets(room)
             });
-            return skip;
+            return null;
         }
         io.to(roomCode).except(socketId).emit('draw other', {
             cardCount: drawSum,
             exceptUser: currUser,
         });
-        roomsData.get(roomCode).gameData.drawSum = 0;
+        room.gameData.drawSum = 0;
         io.to(roomCode).emit('update drawSum', {
-            drawSum: roomsData.get(roomCode).gameData.drawSum
+            drawSum: room.gameData.drawSum
         });
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
-            let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-            roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
             io.to(roomCode).emit('update turn', {
-                roomData: stringifyWithSets(roomsData.get(roomCode))
+                roomData: stringifyWithSets(room)
             });
         }
         return result;
     }
 
     // check if no cards can be played
-    const noValidCard = () => !roomsData.get(roomCode).usersCards.get(currUser).some(card => {
+    const userCards = room.usersCards.get(currUser) || [];
+    const noValidCard = () => !userCards.some(card => {
         return checkThrowValidity(card.split('_'), groundCardParts, drawSum, wildColor, preferences);
-    })
+    });
+
     if (preferences["Allow drawing even with a valid card"] == 'enable' || noValidCard()) {
         if (preferences["Continue to Draw Until You Can Play"] == 'enable') {
             result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
             if (result == null) {
                 if (preferences["Allow drawing even with a valid card"] != 'enable') {
-                    let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-                    roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+                    let nextUser = advanceTurn(room);
+                    room.gameData.currentPlayer = nextUser;
                     io.to(roomCode).emit('update turn', {
-                        roomData: stringifyWithSets(roomsData.get(roomCode))
+                        roomData: stringifyWithSets(room)
                     });
                 }
-                return skip;
-            };
+                return null;
+            }
             io.to(roomCode).except(socketId).emit('draw other', {
                 cardCount: 1,
                 exceptUser: currUser,
             });
         } else if (preferences["Continue to Draw Until You Can Play"] == 'maximum 2 cards') {
-            if (consecutiveDraws < 2) {
+            if (room.gameData.consecutiveDraws < 2) {
                 result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
                 if (result == null) {
                     if (preferences["Allow drawing even with a valid card"] != 'enable') {
-                        let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-                        roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+                        let nextUser = advanceTurn(room);
+                        room.gameData.currentPlayer = nextUser;
                         io.to(roomCode).emit('update turn', {
-                            roomData: stringifyWithSets(roomsData.get(roomCode))
+                            roomData: stringifyWithSets(room)
                         });
                     }
-                    return skip;
-                };
+                    return null;
+                }
                 io.to(roomCode).except(socketId).emit('draw other', {
                     cardCount: 1,
                     exceptUser: currUser,
                 });
-                roomsData.get(roomCode).gameData.consecutiveDraws++;
+                room.gameData.consecutiveDraws++;
             }
-            if (consecutiveDraws == 2 && noValidCard()) {
-                roomsData.get(roomCode).gameData.consecutiveDraws = 0;
-                let nextUser = iteratorFuncs.get(roomsData.get(roomCode));
-                roomsData.get(roomCode).gameData.currentPlayer = nextUser;
+            if (room.gameData.consecutiveDraws >= 2 && noValidCard()) {
+                room.gameData.consecutiveDraws = 0;
+                let nextUser = advanceTurn(room);
+                room.gameData.currentPlayer = nextUser;
                 io.to(roomCode).emit('update turn', {
-                    roomData: stringifyWithSets(roomsData.get(roomCode))
+                    roomData: stringifyWithSets(room)
                 });
             }
         }
         return result;
     }
-
 
     return result;
 };
@@ -502,34 +530,44 @@ io.on('connection', socket => {
 
     socket.on('disconnecting', () => {
         let socketData = socketsData.get(socket.id);
-        if (socketData.hasOwnProperty('roomCode')) { // redundant (condition only)
+        if (socketData && socketData.hasOwnProperty('roomCode') && roomsData.has(socketData.roomCode)) {
             let roomCode = socketData.roomCode;
-            roomsData.get(roomCode).users.delete(socketData.userId);
+            const room = roomsData.get(roomCode);
+            room.users.delete(socketData.userId);
             io.to(roomCode).except(socket.id).emit(
                 'update userList',
-                [socketData, false, roomsData.get(roomCode).started]
+                [socketData, false, room.started]
             );
-            if (roomsData.get(roomCode).started) {
-                roomsData.get(roomCode).rejoinableUsers.add(socketData.userId);
-                if (roomsData.get(roomCode).gameData.currentPlayer == socketData.userId) {
-                    setTimeout(() => {
-                        if (roomsData.get(roomCode).rejoinableUsers.has(socketData.userId)) {
-                            // play valid instead
-                            // throwCard({
-                            //     roomCode,
-                            //     card: randomChoice(roomsData.get(roomCode).usersCards.get(socketData.currUser)),
-                            //     remUser: socketData.currUser,
-                            // });
-                        }
-                    }, inactiveTurnLimit);
-                }
+            if (room.started) {
+                room.rejoinableUsers.add(socketData.userId);
             } else {
-                delete roomsData.get(roomCode).usersData[socketData.userId];
-                const newOwnerId = roomsData.get(roomCode).users.values().next().value;
-                if (roomsData.get(roomCode).owner == socketData.userId && newOwnerId) {
-                    roomsData.get(roomCode).owner = newOwnerId;
-                    roomsData.get(roomCode).gamePreferences = roomsData.get(roomCode).usersData[newOwnerId].userGamePreferences;
-                    io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
+                delete room.usersData[socketData.userId];
+                const newOwnerId = room.users.values().next().value;
+                if (room.owner == socketData.userId && newOwnerId) {
+                    room.owner = newOwnerId;
+                    if (room.usersData[newOwnerId]) {
+                        room.gamePreferences = room.usersData[newOwnerId].userGamePreferences;
+                    }
+                    io.to(roomCode).emit('init roomData', stringifyWithSets(room));
+                }
+            }
+
+            // Room garbage collection: clean up rooms with no remaining users
+            if (room.users.size === 0) {
+                if (!room.started || room.finished) {
+                    if (room.cleanupTimeout) clearTimeout(room.cleanupTimeout);
+                    rooms.delete(roomCode);
+                    roomsData.delete(roomCode);
+                    console.log(`Room [${roomCode}] cleaned up.`);
+                } else if (!room.cleanupTimeout) {
+                    // Ongoing game abandoned: 5-minute grace period before cleaning up
+                    room.cleanupTimeout = setTimeout(() => {
+                        if (roomsData.has(roomCode) && roomsData.get(roomCode).users.size === 0) {
+                            rooms.delete(roomCode);
+                            roomsData.delete(roomCode);
+                            console.log(`Abandoned Room [${roomCode}] cleaned up after timeout.`);
+                        }
+                    }, 5 * 60 * 1000);
                 }
             }
         }
@@ -541,6 +579,13 @@ io.on('connection', socket => {
     });
 
     socket.on('join room', data => {
+        if (!data || !data.roomCode || !roomsData.has(data.roomCode)) return;
+        const room = roomsData.get(data.roomCode);
+        if (room.cleanupTimeout) {
+            clearTimeout(room.cleanupTimeout);
+            room.cleanupTimeout = null;
+        }
+
         socket.join(data.roomCode);
 
         // init socketData
@@ -548,52 +593,58 @@ io.on('connection', socket => {
             socketsData.get(socket.id)[property] = value;
         });
 
-        roomsData.get(data.roomCode).usersData[data.userId] = data;
-        if (!roomsData.get(data.roomCode).usersCards.has(data.userId)) {
-            roomsData.get(data.roomCode).usersCards.set(data.userId, []);
-            roomsData.get(data.roomCode).usersCardCounts[data.userId] = 0;
+        room.usersData[data.userId] = data;
+        if (!room.usersCards.has(data.userId)) {
+            room.usersCards.set(data.userId, []);
+            room.usersCardCounts[data.userId] = 0;
         }
-        if (roomsData.get(data.roomCode).owner == data.userId) {
-            roomsData.get(data.roomCode).gamePreferences = data.userGamePreferences;
+        if (room.owner == data.userId) {
+            room.gamePreferences = data.userGamePreferences;
         }
 
-        socket.emit('init roomData', stringifyWithSets(roomsData.get(data.roomCode)));
+        socket.emit('init roomData', stringifyWithSets(room));
         io.to(data.roomCode).except(socket.id).emit(
             'update userList',
-            [data, true, roomsData.get(data.roomCode).started]
+            [data, true, room.started]
         );
 
-        if (roomsData.get(data.roomCode).started) socket.emit('start game');
+        if (room.started) socket.emit('start game');
     });
 
     socket.on('start game', () => {
-        let roomCode = socketsData.get(socket.id).roomCode;
+        const socketData = socketsData.get(socket.id);
+        if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode)) return;
+        let roomCode = socketData.roomCode;
+        const room = roomsData.get(roomCode);
+        if (!room || room.started) return;
 
-        roomsData.get(roomCode).started = true;
-        roomsData.get(roomCode).permaUserSet = new Set(roomsData.get(roomCode).users);
+        room.started = true;
+        room.permaUserSet = new Set(room.users);
 
-        const selectedUser = randomChoice(roomsData.get(roomCode).users);
-        roomsData.get(roomCode).gameData.currentPlayer = selectedUser;
-        iteratorFuncs.set(roomsData.get(roomCode), selectedUser);
+        const selectedUser = randomChoice(room.users);
+        room.gameData.currentPlayer = selectedUser;
+        setCurrentPlayer(room, selectedUser);
 
         // init deck
+        room.availableDeck.clear();
+        room.discardDeck.clear();
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
-                if (roomsData.get(roomCode).gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
+                if (room.gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
                     return;
                 } else {
-                    if (roomsData.get(roomCode).gamePreferences['Wild draw 2 card'] == 'disable' && subkey == 'draw') {
+                    if (room.gamePreferences['Wild draw 2 card'] == 'disable' && subkey == 'draw') {
                         return;
                     }
-                    if (roomsData.get(roomCode).gamePreferences['Wild stack card'] == 'disable' && subkey == 'stack') {
+                    if (room.gamePreferences['Wild stack card'] == 'disable' && subkey == 'stack') {
                         return;
                     }
                 }
-                roomsData.get(roomCode).availableDeck.set(
+                room.availableDeck.set(
                     subkey + '_' + key,
-                    count * parseInt(roomsData.get(roomCode).gamePreferences['Number of decks'])
+                    count * parseInt(room.gamePreferences['Number of decks'] || 1)
                 );
-                roomsData.get(roomCode).discardDeck.set(
+                room.discardDeck.set(
                     subkey + '_' + key,
                     0
                 );
@@ -601,43 +652,63 @@ io.on('connection', socket => {
         });
 
         const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonAction: true, })[0];
-        roomsData.get(roomCode).gameData.groundCard = selectedGroundCard;
-        roomsData.get(roomCode).lastPileCards.push(selectedGroundCard);
-        roomsData.get(roomCode).discardDeck.set(selectedGroundCard, 1);
+        room.gameData.groundCard = selectedGroundCard;
+        room.lastPileCards = [selectedGroundCard];
+        room.discardDeck.set(selectedGroundCard, 1);
+
+        // Server-authoritative initial hand dealing (7 cards per user)
+        room.users.forEach(userId => {
+            const userHand = [];
+            for (let i = 0; i < 7; i++) {
+                let [card] = pullAndUpdateAvailableDeck(room);
+                if (card) userHand.push(card);
+            }
+            room.usersCards.set(userId, userHand);
+            room.usersCardCounts[userId] = userHand.length;
+        });
 
         io.to(roomCode).emit('start game');
-        io.to(roomCode).emit('init roomData', stringifyWithSets(roomsData.get(roomCode)));
+        io.to(roomCode).emit('init roomData', stringifyWithSets(room));
     });
 
     socket.on('update gamePreferences', data => {
-        let roomCode = socketsData.get(socket.id).roomCode;
+        const socketData = socketsData.get(socket.id);
+        if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode)) return;
+        let roomCode = socketData.roomCode;
         roomsData.get(roomCode).gamePreferences = data;
         io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
     });
 
     socket.on('draw cards', (params, callback) => {
         let result = drawCards(socket, params);
-        callback(result);
+        if (typeof callback === 'function') callback(result);
     });
 
     socket.on('fetch cards', (data, callback) => {
+        if (typeof callback !== 'function') return;
         let socketData = socketsData.get(socket.id);
-        let result = roomsData.get(socketData.roomCode).usersCards.get(socketData.userId);
+        if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode)) {
+            return callback([]);
+        }
+        const room = roomsData.get(socketData.roomCode);
+        let result = (room.usersCards && room.usersCards.get(socketData.userId)) || [];
         callback(result);
     });
 
     socket.on('attempt throw', (data, callback) => {
         let result = attemptThrow(socket, data);
-        callback(result);
+        if (typeof callback === 'function') callback(result);
     });
 
     socket.on('attempt draw', (data, callback) => {
         let result = attemptDraw(socket, data);
-        callback(result);
+        if (typeof callback === 'function') callback(result);
     });
 
     socket.on('set wildColor', data => {
-        let roomCode = socketsData.get(socket.id).roomCode;
+        const socketData = socketsData.get(socket.id);
+        if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode) || !data) return;
+        let roomCode = socketData.roomCode;
         roomsData.get(roomCode).gameData.wildColor = data.selectedColor;
         io.to(roomCode).emit('update wildColor', { selectedColor: data.selectedColor });
     });

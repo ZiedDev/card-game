@@ -96,9 +96,16 @@ const skipButton = document.getElementById('skip-button');
 
 function updateTurnIndicator(index) {
     const turnIndicator = document.getElementById('turn-indicator');
-    const player = document.querySelectorAll('.player-info')[index];
+    const players = document.querySelectorAll('.player-info');
+    if (!turnIndicator || index < 0 || index >= players.length) return;
+    const player = players[index];
+    const playerHeight = (player.getBoundingClientRect().height > 0) ? player.getBoundingClientRect().height : 76;
 
-    gsap.to(turnIndicator, { y: player.getBoundingClientRect().height * index + 16 * index, ease: CustomEase.create("", ".75,.06,.32,1.83") });
+    gsap.to(turnIndicator, {
+        y: playerHeight * index + 16 * index,
+        ease: CustomEase.create("", ".75,.06,.32,1.83"),
+        duration: 0.4
+    });
     player.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'center' });
 }
 
@@ -651,6 +658,7 @@ function toggleWildColorSelector() {
 }
 
 async function onThrowingCard(cardElement) {
+    if (socket.isGameOver) return false;
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
     const cardName = socket.selfCards[index]
@@ -684,6 +692,7 @@ async function onThrowingCard(cardElement) {
 }
 
 async function onDrawingCard(deckCardCount) {
+    if (socket.isGameOver) return false;
     const drawResult = await new Promise(resolve => {
         socket.emit(
             'attempt draw',
@@ -698,7 +707,7 @@ async function onDrawingCard(deckCardCount) {
         );
     });
 
-    if (drawResult) {
+    if (drawResult && Array.isArray(drawResult)) {
         drawResult.forEach(card => {
             addSelfCard(socket.selfCards.length, card);
             socket.selfCards.push(card);
@@ -768,6 +777,26 @@ socket.on('update wildColor', data => {
     wildColorChangeAnimation(data.selectedColor);
 });
 
+socket.on('game over', data => {
+    socket.isGameOver = true;
+    const isWinner = data.winnerId === socket.data.userId;
+    const title = isWinner ? "🏆 Victory!" : "Game Over";
+    const message = isWinner
+        ? "Congratulations! You threw your last card and won the game!"
+        : `${escapeHtml(data.winnerName)} won the game!`;
+
+    createModal(
+        title,
+        [message],
+        [
+            "Return to Home",
+            () => {
+                window.location.href = '/';
+            }
+        ]
+    );
+});
+
 /*----------------------------------------------*/
 // Initialization and main running
 
@@ -779,45 +808,49 @@ const turnListUsers = document.getElementById('users-container');
 
 userNickname.textContent = socket.data.userName;
 userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
+if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.data.userId] !== undefined) {
+    userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
+}
 
 Object.values(socket.roomData.usersData).forEach(user => {
+    const cardCount = (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[user.userId] !== undefined)
+        ? socket.roomData.usersCardCounts[user.userId]
+        : 7;
     const userDOM = `
         <div class="player-info" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
-          <div class="player-cards-count">7</div>
+          <div class="player-cards-count">${cardCount}</div>
         </div>`;
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
+socket.isSelfTurn = socket.roomData && socket.roomData.gameData && (socket.roomData.gameData.currentPlayer == socket.data.userId);
+
 setTimeout(() => {
     turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;
-}, 100);
 
-const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`)
-Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
-    playerInfo.classList.remove('turn');
-    if (playerInfo == nextTurnPlayerInfo) {
-        updateTurnIndicator(index);
-        nextTurnPlayerInfo.classList.add('turn');
-    }
-});
+    const nextTurnPlayerInfo = document.getElementById(`${socket.roomData.gameData.currentPlayer}-player-info`);
+    Array.from(document.querySelectorAll('.player-info')).forEach((playerInfo, index) => {
+        playerInfo.classList.remove('turn');
+        if (playerInfo == nextTurnPlayerInfo) {
+            updateTurnIndicator(index);
+            nextTurnPlayerInfo.classList.add('turn');
+        }
+    });
+}, 100);
 
 const curtainAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durationPerCurtain: 0.4, stagger: 0.07 });
 
 updateDeckCards()
 
-socket.emit(
-    (socket.joinType == 'rejoin' ? 'fetch cards' : 'draw cards'),
-    (socket.joinType == 'rejoin' ? {} : {
-        count: 7, grantUser: socket.data.userId, tillColor: null, nonAction: null,
-    }),
-    (result) => {
+socket.emit('fetch cards', {}, (result) => {
+    if (result && Array.isArray(result)) {
         result.forEach((card, index) => {
             addSelfCard(index, card, false);
         });
         socket.selfCards = result;
     }
-);
+});
 setTimeout(() => {
     updateCardPositions();
 }, 100 + curtainAnimationTime);
