@@ -71,6 +71,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
         userGamePreferences: userGamePreferences.val,
     }
     socket.emit('join room', socket.data);
+    socket.on('connect', () => {
+        socket.emit('join room', socket.data);
+    });
 
     socket.joinType = roomResponse;
     socket.selfCards = []

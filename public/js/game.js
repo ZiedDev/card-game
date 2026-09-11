@@ -589,23 +589,61 @@ function hitmarkerAnimation(value = 0) {
     });
 }
 
-function wildColorChangeAnimation(color = 'red') {
+function getVisualCardName(cardName, isTopCard = false, wildColor = null) {
+    if (!cardName) return cardName;
+    const parts = cardName.split('_');
+    if (isTopCard && parts[1] === 'wild' && wildColor) {
+        const base = `${parts[0]}_wild`;
+        return `${base}_${wildColor}`;
+    }
+    return cardName;
+}
+
+function wildColorChangeAnimation(color = 'red', resolve = () => { }) {
     const lastWildCard = discardPile.children[discardPile.children.length - 1];
+    if (!lastWildCard) {
+        resolve();
+        return;
+    }
 
-    const topImage = lastWildCard.appendChild(document.createElement('img'));
-    topImage.src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
+    const baseImg = lastWildCard.querySelector('img');
+    if (!baseImg) {
+        resolve();
+        return;
+    }
 
-    const [originX, originY] = [Math.random() * 100, Math.random() * 100];
+    const currentSrc = baseImg.src;
+    const baseCardSrc = currentSrc.replace(/_(red|blue|green|yellow)\.svg$/, '.svg');
+    const newColoredSrc = baseCardSrc.replace('.svg', `_${color}.svg`);
+
+    const topImage = document.createElement('img');
+    topImage.src = newColoredSrc;
+    topImage.draggable = false;
+    topImage.style.position = 'absolute';
+    topImage.style.top = '0';
+    topImage.style.left = '0';
+    topImage.style.width = '100%';
+    topImage.style.height = '100%';
+    topImage.style.borderRadius = 'inherit';
+    topImage.style.pointerEvents = 'none';
+
+    lastWildCard.appendChild(topImage);
+
+    const originX = Math.random() * 100;
+    const originY = Math.random() * 100;
 
     gsap.fromTo(topImage, {
-        clipPath: `padding-box circle(0% at ${originX} ${originY}%)`,
+        clipPath: `padding-box circle(0% at ${originX}% ${originY}%)`,
     }, {
         clipPath: `padding-box circle(200% at ${originX}% ${originY}%)`,
-        duration: 2,
+        duration: 1.5,
         ease: CustomEase.create("", ".28,.0,.28,.99"),
         onComplete: () => {
-            lastWildCard.querySelector('img').src = lastWildCard.querySelector('img').src.replace('.svg', `_${color}.svg`);
-            // lastWildCard.removeChild(topImage);
+            baseImg.src = newColoredSrc;
+            if (topImage.parentNode === lastWildCard) {
+                lastWildCard.removeChild(topImage);
+            }
+            resolve();
         },
     });
 }
@@ -617,15 +655,20 @@ const colorWheelBg = document.getElementById('color-wheel');
 const wildColorBackdrop = document.getElementById('wild-color-backdrop');
 const colorWheelColors = document.querySelectorAll('.color-wheel .color');
 let wildColorSelectorTimeout;
+let isSubmittingWildColor = false;
 
 // wildColorSelector functionality
 colorWheelColors.forEach((colorWheelColor, index) => {
     colorWheelColor.addEventListener('click', e => {
-        if (!wildColorSelector.classList.contains('hide')) {
+        if (!wildColorSelector.classList.contains('hide') && !isSubmittingWildColor) {
+            isSubmittingWildColor = true;
             socket.emit('set wildColor', {
                 selectedColor: ['green', 'yellow', 'blue', 'red'][index],
             });
-            toggleWildColorSelector()
+            toggleWildColorSelector();
+            setTimeout(() => {
+                isSubmittingWildColor = false;
+            }, 1000);
         }
     });
 });
@@ -774,7 +817,9 @@ socket.on('request wildColor', data => {
 
 socket.on('update wildColor', data => {
     socket.roomData.gameData.wildColor = data.selectedColor;
-    wildColorChangeAnimation(data.selectedColor);
+    discardPileAnimationQueue.push(resolve => {
+        wildColorChangeAnimation(data.selectedColor, resolve);
+    });
 });
 
 socket.on('game over', data => {
@@ -816,8 +861,9 @@ Object.values(socket.roomData.usersData).forEach(user => {
     const cardCount = (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[user.userId] !== undefined)
         ? socket.roomData.usersCardCounts[user.userId]
         : 7;
+    const isAway = socket.roomData.rejoinableUsers && socket.roomData.rejoinableUsers.has(user.userId);
     const userDOM = `
-        <div class="player-info" id="${user.userId}-player-info">
+        <div class="player-info ${isAway ? 'away' : ''}" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
           <h2 class="player-nickname">${user.userName}</h2>
           <div class="player-cards-count">${cardCount}</div>
@@ -843,6 +889,10 @@ const curtainAnimationTime = animateCurtains(false, { numberOfCurtains: 5, durat
 
 updateDeckCards()
 
+if (socket.roomData.gameData && socket.roomData.gameData.drawSum > 0) {
+    hitmarkerAnimation(socket.roomData.gameData.drawSum);
+}
+
 socket.emit('fetch cards', {}, (result) => {
     if (result && Array.isArray(result)) {
         result.forEach((card, index) => {
@@ -857,11 +907,16 @@ setTimeout(() => {
 
 if (socket.joinType == 'join') {
     setTimeout(() => {
-        addPileCard(socket.roomData.lastPileCards[0], socket.maxPileSize);
+        const startCard = socket.roomData.lastPileCards[0];
+        const visualCard = getVisualCardName(startCard, true, socket.roomData.gameData.wildColor);
+        addPileCard(visualCard, socket.maxPileSize);
         groundCardAnimation();
-    }, 100 + curtainAnimationTime)
+    }, 100 + curtainAnimationTime);
 } else {
-    socket.roomData.lastPileCards.forEach(card => {
-        addPileCard(card, socket.maxPileSize);
+    const pileCards = socket.roomData.lastPileCards || [];
+    pileCards.forEach((card, index) => {
+        const isTopCard = index === pileCards.length - 1;
+        const visualCard = getVisualCardName(card, isTopCard, socket.roomData.gameData.wildColor);
+        addPileCard(visualCard, socket.maxPileSize);
     });
 }

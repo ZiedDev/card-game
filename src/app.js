@@ -105,6 +105,7 @@ app.post('/createRoom', (req, res) => {
             groundCard: null,
             drawSum: 0,
             wildColor: null,
+            wildChooser: null,
             stackDraw: null,
             consecutiveDraws: 0,
         },
@@ -304,6 +305,7 @@ const attemptThrow = (socket, params) => {
     // update wildColor if wild (only if game is continuing)
     if (cardParts[1] == 'wild' && !isGameOver) {
         room.gameData.wildColor = null;
+        room.gameData.wildChooser = currUser;
         io.to(socketId).emit('request wildColor');
     }
 
@@ -540,6 +542,12 @@ io.on('connection', socket => {
             );
             if (room.started) {
                 room.rejoinableUsers.add(socketData.userId);
+                if (room.gameData.wildChooser === socketData.userId && !room.gameData.wildColor) {
+                    const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
+                    room.gameData.wildColor = autoColor;
+                    room.gameData.wildChooser = null;
+                    io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
+                }
             } else {
                 delete room.usersData[socketData.userId];
                 const newOwnerId = room.users.values().next().value;
@@ -593,6 +601,11 @@ io.on('connection', socket => {
             socketsData.get(socket.id)[property] = value;
         });
 
+        if (room.rejoinableUsers.has(data.userId)) {
+            room.rejoinableUsers.delete(data.userId);
+            room.users.add(data.userId);
+        }
+
         room.usersData[data.userId] = data;
         if (!room.usersCards.has(data.userId)) {
             room.usersCards.set(data.userId, []);
@@ -608,7 +621,12 @@ io.on('connection', socket => {
             [data, true, room.started]
         );
 
-        if (room.started) socket.emit('start game');
+        if (room.started) {
+            socket.emit('start game');
+            if (room.gameData.wildChooser === data.userId && !room.gameData.wildColor) {
+                socket.emit('request wildColor');
+            }
+        }
     });
 
     socket.on('start game', () => {
@@ -709,7 +727,14 @@ io.on('connection', socket => {
         const socketData = socketsData.get(socket.id);
         if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode) || !data) return;
         let roomCode = socketData.roomCode;
-        roomsData.get(roomCode).gameData.wildColor = data.selectedColor;
+        const room = roomsData.get(roomCode);
+        const validColors = ['green', 'yellow', 'blue', 'red'];
+        if (!validColors.includes(data.selectedColor)) return;
+        const groundCardParts = (room.gameData.groundCard || '').split('_');
+        if (groundCardParts[1] !== 'wild') return;
+
+        room.gameData.wildColor = data.selectedColor;
+        room.gameData.wildChooser = null;
         io.to(roomCode).emit('update wildColor', { selectedColor: data.selectedColor });
     });
 
