@@ -180,14 +180,53 @@ function updateDeckCards(deckCardCount = 10) {
     }
 }
 
-function updateSkipButton(toggle = undefined) {
-    if (toggle === true) {
-        skipButton.disabled = false;
-    } else if (toggle === false) {
+function updateSkipButton() {
+    if (!skipButton) return;
+    const preferences = (socket && socket.roomData && socket.roomData.gamePreferences) ? socket.roomData.gamePreferences : {};
+    const isManualSkipEnabled = preferences["Manual Turn Skip Button"] !== 'disable';
+
+    if (!isManualSkipEnabled) {
+        skipButton.classList.add('hide');
         skipButton.disabled = true;
-    } else {
-        skipButton.disabled = !skipButton.disabled;
+        return;
     }
+
+    skipButton.classList.remove('hide');
+
+    if (socket && socket.isGameOver) {
+        skipButton.disabled = true;
+        skipButton.style.setProperty('--tip-msg', '"Game Over"');
+        return;
+    }
+
+    if (socket && socket.isSelfTurn) {
+        if (socket.roomData && socket.roomData.gameData && (socket.roomData.gameData.drawSum > 0 || socket.roomData.gameData.stackDraw)) {
+            skipButton.disabled = true;
+            skipButton.style.setProperty('--tip-msg', '"Must draw penalty cards"');
+        } else {
+            skipButton.disabled = false;
+            skipButton.style.setProperty('--tip-msg', '"Skip your turn"');
+        }
+    } else {
+        skipButton.disabled = true;
+        skipButton.style.setProperty('--tip-msg', '"You can only skip on your turn"');
+    }
+}
+
+if (skipButton) {
+    skipButton.addEventListener('click', () => {
+        if (skipButton.disabled || !socket.isSelfTurn || socket.isGameOver) return;
+        skipButton.disabled = true;
+        socket.emit('attempt skip', {
+            user: socket.data.userId,
+            socketId: socket.id,
+            roomCode: null,
+        }, (success) => {
+            if (!success) {
+                updateSkipButton();
+            }
+        });
+    });
 }
 
 /*----------------------------------------------*/
@@ -784,6 +823,7 @@ socket.on('update turn', data => {
     });
 
     userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
+    updateSkipButton();
 });
 
 socket.on('throw other', data => {
@@ -809,6 +849,7 @@ socket.on('draw other', data => {
 socket.on('update drawSum', data => {
     hitmarkerAnimation(data.drawSum);
     socket.roomData.gameData.drawSum = data.drawSum;
+    updateSkipButton();
 });
 
 socket.on('request wildColor', data => {
@@ -824,6 +865,7 @@ socket.on('update wildColor', data => {
 
 socket.on('game over', data => {
     socket.isGameOver = true;
+    updateSkipButton();
     const isWinner = data.winnerId === socket.data.userId;
     const title = isWinner ? "🏆 Victory!" : "Game Over";
     const message = isWinner
@@ -871,6 +913,7 @@ Object.values(socket.roomData.usersData).forEach(user => {
     turnListUsers.appendChild(htmlToElement(userDOM))
 });
 socket.isSelfTurn = socket.roomData && socket.roomData.gameData && (socket.roomData.gameData.currentPlayer == socket.data.userId);
+updateSkipButton();
 
 setTimeout(() => {
     turnsList.style = `--turn-list-height: ${turnListUsers.getBoundingClientRect().height}px`;

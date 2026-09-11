@@ -471,58 +471,80 @@ const attemptDraw = (socket, params) => {
     // check if no cards can be played
     const userCards = room.usersCards.get(currUser) || [];
     const noValidCard = () => !userCards.some(card => {
-        return checkThrowValidity(card.split('_'), groundCardParts, drawSum, wildColor, preferences);
+        return checkThrowValidity(card.split('_'), groundCardParts, drawSum, wildColor, stackDraw, preferences);
     });
 
-    if (preferences["Allow drawing even with a valid card"] == 'enable' || noValidCard()) {
-        if (preferences["Continue to Draw Until You Can Play"] == 'enable') {
-            result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
-            if (result == null) {
-                if (preferences["Allow drawing even with a valid card"] != 'enable') {
-                    let nextUser = advanceTurn(room);
-                    room.gameData.currentPlayer = nextUser;
-                    io.to(roomCode).emit('update turn', {
-                        roomData: stringifyWithSets(room)
-                    });
-                }
-                return null;
-            }
-            io.to(roomCode).except(socketId).emit('draw other', {
-                cardCount: 1,
-                exceptUser: currUser,
+    const allowDrawingWithValid = preferences["Allow drawing even with a valid card"] == 'enable';
+    const drawRule = preferences["Draw Limit"] || preferences["Continue to Draw Until You Can Play"];
+    const maxDraws = drawRule === 'maximum 1 card' ? 1 : (drawRule === 'maximum 2 cards' ? 2 : Infinity);
+
+    if (room.gameData.consecutiveDraws >= maxDraws) {
+        return null;
+    }
+
+    if (!allowDrawingWithValid && !noValidCard()) {
+        return null;
+    }
+
+    result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
+    if (result == null) {
+        if (noValidCard()) {
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(room)
             });
-        } else if (preferences["Continue to Draw Until You Can Play"] == 'maximum 2 cards') {
-            if (room.gameData.consecutiveDraws < 2) {
-                result = drawCards(socket, { count: 1, grantUser: currUser, tillColor: null, nonAction: null, });
-                if (result == null) {
-                    if (preferences["Allow drawing even with a valid card"] != 'enable') {
-                        let nextUser = advanceTurn(room);
-                        room.gameData.currentPlayer = nextUser;
-                        io.to(roomCode).emit('update turn', {
-                            roomData: stringifyWithSets(room)
-                        });
-                    }
-                    return null;
-                }
-                io.to(roomCode).except(socketId).emit('draw other', {
-                    cardCount: 1,
-                    exceptUser: currUser,
-                });
-                room.gameData.consecutiveDraws++;
-            }
-            if (room.gameData.consecutiveDraws >= 2 && noValidCard()) {
-                room.gameData.consecutiveDraws = 0;
-                let nextUser = advanceTurn(room);
-                room.gameData.currentPlayer = nextUser;
-                io.to(roomCode).emit('update turn', {
-                    roomData: stringifyWithSets(room)
-                });
-            }
         }
-        return result;
+        return null;
+    }
+
+    io.to(roomCode).except(socketId).emit('draw other', {
+        cardCount: 1,
+        exceptUser: currUser,
+    });
+    room.gameData.consecutiveDraws++;
+
+    if (room.gameData.consecutiveDraws >= maxDraws) {
+        if (noValidCard()) {
+            let nextUser = advanceTurn(room);
+            room.gameData.currentPlayer = nextUser;
+            io.to(roomCode).emit('update turn', {
+                roomData: stringifyWithSets(room)
+            });
+        }
     }
 
     return result;
+};
+
+const attemptSkip = (socket, params) => {
+    let roomCode = params.roomCode || (socket && socketsData.get(socket.id) && socketsData.get(socket.id).roomCode);
+    if (!roomCode || !roomsData.has(roomCode)) return false;
+    const room = roomsData.get(roomCode);
+    if (room.finished) return false;
+
+    const currUser = params.user;
+    const isSelfTurn = room.gameData.currentPlayer == currUser;
+    const preferences = room.gamePreferences || {};
+
+    if (!isSelfTurn) {
+        return false;
+    }
+
+    if (preferences["Manual Turn Skip Button"] === 'disable') {
+        return false;
+    }
+
+    if (room.gameData.drawSum > 0 || room.gameData.stackDraw) {
+        return false;
+    }
+
+    let nextUser = advanceTurn(room);
+    room.gameData.currentPlayer = nextUser;
+    io.to(roomCode).emit('update turn', {
+        roomData: stringifyWithSets(room)
+    });
+    return true;
 };
 
 // socket
@@ -720,6 +742,11 @@ io.on('connection', socket => {
 
     socket.on('attempt draw', (data, callback) => {
         let result = attemptDraw(socket, data);
+        if (typeof callback === 'function') callback(result);
+    });
+
+    socket.on('attempt skip', (data, callback) => {
+        let result = attemptSkip(socket, data);
         if (typeof callback === 'function') callback(result);
     });
 

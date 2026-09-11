@@ -91,8 +91,12 @@ const gamePreferenceOptions = {
         options: ['enable', 'disable'],
         default: 'enable',
     },
-    "Continue to Draw Until You Can Play": {
-        options: ['enable', 'maximum 2 cards'],
+    "Manual Turn Skip Button": {
+        options: ['enable', 'disable'],
+        default: 'enable',
+    },
+    "Draw Limit": {
+        options: ['maximum 1 card', 'maximum 2 cards', 'draw until can play'],
         default: 'maximum 2 cards',
     },
     "Number of decks": {
@@ -113,7 +117,7 @@ const gamePreferenceOptions = {
     },
 }
 
-const currVersion = 1;
+const currVersion = 3;
 let userVersion = new StoredValue('userVersion', currVersion);
 userVersion.update();
 if (currVersion != userVersion.val) {
@@ -134,6 +138,16 @@ let userGamePreferences = new StoredValue(
         return acc;
     }, {})
 );
+if (userGamePreferences.val && typeof userGamePreferences.val === 'object') {
+    let changed = false;
+    Object.keys(gamePreferenceOptions).forEach(key => {
+        if (userGamePreferences.val[key] === undefined || !gamePreferenceOptions[key].options.includes(userGamePreferences.val[key])) {
+            userGamePreferences.val[key] = gamePreferenceOptions[key].default;
+            changed = true;
+        }
+    });
+    if (changed) userGamePreferences.update();
+}
 let userDeckSkin = new StoredValue('userDeckSkin', 'skin_1', self => {
     deckSkinWildColors[self._value].forEach((color, index) => {
         document.documentElement.style.setProperty('--wild-color-' + (index + 1), color);

@@ -70,6 +70,9 @@ function advanceTurn(roomData, step = 1) {
     const dirMultiplier = roomData.gameData.direction === 'cw' ? 1 : -1;
     const nextIdx = ((currIdx + dirMultiplier * step) % users.length + users.length) % users.length;
     roomData.gameData.currentPlayer = users[nextIdx];
+    if (roomData.gameData) {
+        roomData.gameData.consecutiveDraws = 0;
+    }
     return roomData.gameData.currentPlayer;
 }
 
@@ -77,6 +80,9 @@ function setCurrentPlayer(roomData, userId) {
     const users = Array.from(roomData.permaUserSet || roomData.users || []);
     if (users.includes(userId)) {
         roomData.gameData.currentPlayer = userId;
+        if (roomData.gameData) {
+            roomData.gameData.consecutiveDraws = 0;
+        }
     }
     return roomData.gameData.currentPlayer;
 }
