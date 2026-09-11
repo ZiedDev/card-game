@@ -1,10 +1,15 @@
-// environment variables
+// environment variables & constants
 require('dotenv').config();
 const hostname = process.env.HOSTNAME = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT = process.env.PORT || 8080;
 const nodeEnv = process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 const maxPileSize = process.env.MAX_PILE_SIZE = process.env.MAX_PILE_SIZE || 10;
-const inactiveTurnLimit = process.env.INACTIVE_TURN_LIMIT = process.env.INACTIVE_TURN_LIMIT || 10 * 1000 // 10secs;
+
+// Centralized timing configuration (all values in ms)
+const TIMINGS = {
+    GRACE_PERIOD: parseInt(process.env.GRACE_PERIOD || 5000),                // 5s grace period for disconnected player / wild chooser
+    ABANDONED_ROOM_TIMEOUT: parseInt(process.env.ABANDONED_ROOM_TIMEOUT || 5 * 60 * 1000), // 5 min timeout before deleting empty room
+};
 
 // library imports
 const express = require('express');
@@ -114,6 +119,7 @@ app.post('/createRoom', (req, res) => {
 
         // not sended to client
         userIterator: null,
+        autoPlayTimeout: null,
         usersCards: new Map(),
         availableDeck: new Map(),
         discardDeck: new Map(),
@@ -358,10 +364,17 @@ const attemptThrow = (socket, params) => {
         roomData: stringifyWithSets(room)
     });
 
-    io.to(roomCode).except(socketId).emit('throw other', {
-        cardName: cardName,
-        exceptUser: currUser,
-    });
+    if (socketId) {
+        io.to(roomCode).except(socketId).emit('throw other', {
+            cardName: cardName,
+            exceptUser: currUser,
+        });
+    } else {
+        io.to(roomCode).emit('throw other', {
+            cardName: cardName,
+            exceptUser: currUser,
+        });
+    }
 
     if (isGameOver) {
         const winnerData = room.usersData[currUser] || {};
@@ -371,26 +384,165 @@ const attemptThrow = (socket, params) => {
             winnerPfp: winnerData.userPfp !== undefined ? winnerData.userPfp : 0,
             roomData: stringifyWithSets(room)
         });
+        cancelAutoPlayTimer(room);
+    } else {
+        scheduleAutoPlayIfAway(roomCode);
     }
 
     return true;
 };
 
-const throwCard = data => { // deprecated
-    // handle disconnected user
-    if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
-        setTimeout(() => {
-            if (roomsData.get(roomCode).rejoinableUsers.has(nextUser)) {
-                // play valid instead       
-                // throwCard({
-                //     roomCode,
-                //     card: randomChoice(roomsData.get(roomCode).usersCards.get(nextUser)),
-                //     remUser: nextUser,
-                // });
-            }
-        }, inactiveTurnLimit);
+const cancelAutoPlayTimer = (room) => {
+    if (room && room.autoPlayTimeout) {
+        clearTimeout(room.autoPlayTimeout);
+        room.autoPlayTimeout = null;
     }
-}
+};
+
+const resolveWildChooserAuto = (roomCode) => {
+    if (!roomsData.has(roomCode)) return;
+    const room = roomsData.get(roomCode);
+    if (!room || !room.started || room.finished) return;
+
+    if (room.gameData.wildChooser && !room.gameData.wildColor && room.rejoinableUsers.has(room.gameData.wildChooser)) {
+        const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
+        room.gameData.wildColor = autoColor;
+        room.gameData.wildChooser = null;
+        io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
+        scheduleAutoPlayIfAway(roomCode);
+    }
+};
+
+const performAutoPlay = (roomCode) => {
+    if (!roomsData.has(roomCode)) return;
+    const room = roomsData.get(roomCode);
+    if (!room || !room.started || room.finished) return;
+
+    const currUser = room.gameData.currentPlayer;
+    if (!currUser || !room.rejoinableUsers.has(currUser)) return;
+
+    const preferences = room.gamePreferences || {};
+    const userCards = room.usersCards.get(currUser) || [];
+    const groundCard = room.gameData.groundCard;
+    const groundCardParts = (groundCard || '').split('_');
+    const drawSum = room.gameData.drawSum;
+    const wildColor = room.gameData.wildColor;
+    const stackDraw = room.gameData.stackDraw;
+
+    // 1. Handle active stackDraw penalty
+    if (stackDraw && wildColor) {
+        attemptDraw(null, { roomCode, user: currUser, socketId: null });
+        scheduleAutoPlayIfAway(roomCode);
+        return;
+    }
+
+    // 2. Handle active drawSum penalty
+    if (drawSum > 0) {
+        if (preferences["Stack draw-2 and draw-4 cards"] === 'enable') {
+            const stackCard = userCards.find(c => {
+                const parts = c.split('_');
+                return (parts[0] === 'draw' || parts[0] === 'draw4');
+            });
+            if (stackCard) {
+                attemptThrow(null, { roomCode, user: currUser, cardName: stackCard, socketId: null });
+                if (stackCard.split('_')[1] === 'wild' && !room.finished) {
+                    const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
+                    room.gameData.wildColor = autoColor;
+                    room.gameData.wildChooser = null;
+                    io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
+                }
+                scheduleAutoPlayIfAway(roomCode);
+                return;
+            }
+        }
+        attemptDraw(null, { roomCode, user: currUser, socketId: null });
+        scheduleAutoPlayIfAway(roomCode);
+        return;
+    }
+
+    // 3. Normal turn: check if we have a playable card in hand
+    const validCards = userCards.filter(card => {
+        return checkThrowValidity(card.split('_'), groundCardParts, drawSum, wildColor, stackDraw, preferences);
+    });
+
+    if (validCards.length > 0) {
+        // Pick the first valid card (prefer non-wild if available)
+        const chosenCard = validCards.find(c => c.split('_')[1] !== 'wild') || validCards[0];
+        attemptThrow(null, { roomCode, user: currUser, cardName: chosenCard, socketId: null });
+        if (chosenCard.split('_')[1] === 'wild' && !room.finished) {
+            const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
+            room.gameData.wildColor = autoColor;
+            room.gameData.wildChooser = null;
+            io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
+        }
+        scheduleAutoPlayIfAway(roomCode);
+        return;
+    }
+
+    // 4. No valid card: Draw according to room preferences
+    const drawRule = preferences["Draw Limit"] || preferences["Continue to Draw Until You Can Play"] || 'maximum 2 cards';
+    const maxDraws = drawRule === 'maximum 1 card' ? 1 : (drawRule === 'maximum 2 cards' ? 2 : 25);
+
+    let playedAfterDraw = false;
+    for (let d = 0; d < maxDraws; d++) {
+        const drawn = drawCards(null, { roomCode, count: 1, grantUser: currUser, tillColor: null, nonAction: null });
+        if (!drawn || drawn.length === 0) break;
+        io.to(roomCode).emit('draw other', {
+            cardCount: 1,
+            exceptUser: currUser,
+        });
+
+        const drawnCard = drawn[0];
+        if (checkThrowValidity(drawnCard.split('_'), groundCardParts, drawSum, wildColor, stackDraw, preferences)) {
+            attemptThrow(null, { roomCode, user: currUser, cardName: drawnCard, socketId: null });
+            if (drawnCard.split('_')[1] === 'wild' && !room.finished) {
+                const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
+                room.gameData.wildColor = autoColor;
+                room.gameData.wildChooser = null;
+                io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
+            }
+            playedAfterDraw = true;
+            break;
+        }
+    }
+
+    if (!playedAfterDraw && !room.finished) {
+        const nextUser = advanceTurn(room);
+        room.gameData.currentPlayer = nextUser;
+        room.gameData.consecutiveDraws = 0;
+        io.to(roomCode).emit('update turn', {
+            roomData: stringifyWithSets(room)
+        });
+    }
+
+    scheduleAutoPlayIfAway(roomCode);
+};
+
+const scheduleAutoPlayIfAway = (roomCode) => {
+    if (!roomsData.has(roomCode)) return;
+    const room = roomsData.get(roomCode);
+    if (!room || !room.started || room.finished) {
+        cancelAutoPlayTimer(room);
+        return;
+    }
+
+    cancelAutoPlayTimer(room);
+
+    // If wild chooser is away and wildColor is pending
+    if (room.gameData.wildChooser && !room.gameData.wildColor && room.rejoinableUsers.has(room.gameData.wildChooser)) {
+        room.autoPlayTimeout = setTimeout(() => {
+            resolveWildChooserAuto(roomCode);
+        }, TIMINGS.GRACE_PERIOD);
+        return;
+    }
+
+    // If current player is away
+    if (room.gameData.currentPlayer && room.rejoinableUsers.has(room.gameData.currentPlayer)) {
+        room.autoPlayTimeout = setTimeout(() => {
+            performAutoPlay(roomCode);
+        }, TIMINGS.GRACE_PERIOD);
+    }
+};
 
 const attemptDraw = (socket, params) => {
     let roomCode = params.roomCode || (socket && socketsData.get(socket.id) && socketsData.get(socket.id).roomCode);
@@ -423,10 +575,17 @@ const attemptDraw = (socket, params) => {
             });
             return null;
         }
-        io.to(roomCode).except(socketId).emit('draw other', {
-            cardCount: result.length,
-            exceptUser: currUser,
-        });
+        if (socketId) {
+            io.to(roomCode).except(socketId).emit('draw other', {
+                cardCount: result.length,
+                exceptUser: currUser,
+            });
+        } else {
+            io.to(roomCode).emit('draw other', {
+                cardCount: result.length,
+                exceptUser: currUser,
+            });
+        }
         room.gameData.stackDraw = false;
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
@@ -436,6 +595,7 @@ const attemptDraw = (socket, params) => {
                 roomData: stringifyWithSets(room)
             });
         }
+        scheduleAutoPlayIfAway(roomCode);
         return result;
     }
 
@@ -447,12 +607,20 @@ const attemptDraw = (socket, params) => {
             io.to(roomCode).emit('update turn', {
                 roomData: stringifyWithSets(room)
             });
+            scheduleAutoPlayIfAway(roomCode);
             return null;
         }
-        io.to(roomCode).except(socketId).emit('draw other', {
-            cardCount: drawSum,
-            exceptUser: currUser,
-        });
+        if (socketId) {
+            io.to(roomCode).except(socketId).emit('draw other', {
+                cardCount: drawSum,
+                exceptUser: currUser,
+            });
+        } else {
+            io.to(roomCode).emit('draw other', {
+                cardCount: drawSum,
+                exceptUser: currUser,
+            });
+        }
         room.gameData.drawSum = 0;
         io.to(roomCode).emit('update drawSum', {
             drawSum: room.gameData.drawSum
@@ -465,6 +633,7 @@ const attemptDraw = (socket, params) => {
                 roomData: stringifyWithSets(room)
             });
         }
+        scheduleAutoPlayIfAway(roomCode);
         return result;
     }
 
@@ -494,14 +663,22 @@ const attemptDraw = (socket, params) => {
             io.to(roomCode).emit('update turn', {
                 roomData: stringifyWithSets(room)
             });
+            scheduleAutoPlayIfAway(roomCode);
         }
         return null;
     }
 
-    io.to(roomCode).except(socketId).emit('draw other', {
-        cardCount: 1,
-        exceptUser: currUser,
-    });
+    if (socketId) {
+        io.to(roomCode).except(socketId).emit('draw other', {
+            cardCount: 1,
+            exceptUser: currUser,
+        });
+    } else {
+        io.to(roomCode).emit('draw other', {
+            cardCount: 1,
+            exceptUser: currUser,
+        });
+    }
     room.gameData.consecutiveDraws++;
 
     if (room.gameData.consecutiveDraws >= maxDraws) {
@@ -514,6 +691,7 @@ const attemptDraw = (socket, params) => {
         }
     }
 
+    scheduleAutoPlayIfAway(roomCode);
     return result;
 };
 
@@ -544,6 +722,7 @@ const attemptSkip = (socket, params) => {
     io.to(roomCode).emit('update turn', {
         roomData: stringifyWithSets(room)
     });
+    scheduleAutoPlayIfAway(roomCode);
     return true;
 };
 
@@ -564,12 +743,7 @@ io.on('connection', socket => {
             );
             if (room.started) {
                 room.rejoinableUsers.add(socketData.userId);
-                if (room.gameData.wildChooser === socketData.userId && !room.gameData.wildColor) {
-                    const autoColor = randomChoice(['red', 'blue', 'green', 'yellow']);
-                    room.gameData.wildColor = autoColor;
-                    room.gameData.wildChooser = null;
-                    io.to(roomCode).emit('update wildColor', { selectedColor: autoColor });
-                }
+                scheduleAutoPlayIfAway(roomCode);
             } else {
                 delete room.usersData[socketData.userId];
                 const newOwnerId = room.users.values().next().value;
@@ -586,18 +760,20 @@ io.on('connection', socket => {
             if (room.users.size === 0) {
                 if (!room.started || room.finished) {
                     if (room.cleanupTimeout) clearTimeout(room.cleanupTimeout);
+                    cancelAutoPlayTimer(room);
                     rooms.delete(roomCode);
                     roomsData.delete(roomCode);
                     console.log(`Room [${roomCode}] cleaned up.`);
                 } else if (!room.cleanupTimeout) {
-                    // Ongoing game abandoned: 5-minute grace period before cleaning up
+                    // Ongoing game abandoned: grace period before cleaning up
                     room.cleanupTimeout = setTimeout(() => {
                         if (roomsData.has(roomCode) && roomsData.get(roomCode).users.size === 0) {
+                            cancelAutoPlayTimer(roomsData.get(roomCode));
                             rooms.delete(roomCode);
                             roomsData.delete(roomCode);
                             console.log(`Abandoned Room [${roomCode}] cleaned up after timeout.`);
                         }
-                    }, 5 * 60 * 1000);
+                    }, TIMINGS.ABANDONED_ROOM_TIMEOUT);
                 }
             }
         }
@@ -626,6 +802,9 @@ io.on('connection', socket => {
         if (room.rejoinableUsers.has(data.userId)) {
             room.rejoinableUsers.delete(data.userId);
             room.users.add(data.userId);
+            if (room.gameData.wildChooser === data.userId || room.gameData.currentPlayer === data.userId) {
+                cancelAutoPlayTimer(room);
+            }
         }
 
         room.usersData[data.userId] = data;
@@ -647,6 +826,8 @@ io.on('connection', socket => {
             socket.emit('start game');
             if (room.gameData.wildChooser === data.userId && !room.gameData.wildColor) {
                 socket.emit('request wildColor');
+            } else {
+                scheduleAutoPlayIfAway(data.roomCode);
             }
         }
     });
@@ -709,6 +890,7 @@ io.on('connection', socket => {
 
         io.to(roomCode).emit('start game');
         io.to(roomCode).emit('init roomData', stringifyWithSets(room));
+        scheduleAutoPlayIfAway(roomCode);
     });
 
     socket.on('update gamePreferences', data => {
@@ -763,6 +945,7 @@ io.on('connection', socket => {
         room.gameData.wildColor = data.selectedColor;
         room.gameData.wildChooser = null;
         io.to(roomCode).emit('update wildColor', { selectedColor: data.selectedColor });
+        scheduleAutoPlayIfAway(roomCode);
     });
 
     socket.on('test', () => {
