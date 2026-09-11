@@ -70,10 +70,13 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
         roomCode: roomCode.val,
         userGamePreferences: userGamePreferences.val,
     }
-    socket.emit('join room', socket.data);
-    socket.on('connect', () => {
+    const emitJoin = () => {
         socket.emit('join room', socket.data);
-    });
+    };
+    if (socket.connected) {
+        emitJoin();
+    }
+    socket.on('connect', emitJoin);
 
     socket.joinType = roomResponse;
     socket.selfCards = []
@@ -88,6 +91,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
 
         document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
 
+        if (typeof gsap !== 'undefined') {
+            gsap.killTweensOf('#players-list .player');
+        }
         document.getElementById('players-list').innerHTML = '';
         document.getElementById('settings').innerHTML = '';
 
@@ -100,7 +106,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
 
             document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
         });
-        gsap.from(`.player`, playerListAnimationObject);
+        if (typeof gsap !== 'undefined') {
+            gsap.from('#players-list .player', playerListAnimationObject);
+        }
 
         const inviteButton = document.getElementById('invite-button');
         let inviteButtonIconTimeout = 0;
@@ -177,24 +185,47 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
         if (connecting && !rejoin) {
             socket.roomData.users.add(userData.userId)
             socket.roomData.usersData[userData.userId] = userData;
+
+            const existingPlayer = document.getElementById(`${userData.userId}-player-list`);
+            if (existingPlayer) {
+                const img = existingPlayer.querySelector('.user-image');
+                if (img) img.src = `/assets/pfps/${userData.userPfp}.svg`;
+                const name = existingPlayer.querySelector('h2');
+                if (name) name.textContent = userData.userName;
+                return;
+            }
+
             const playerDOM = `
                 <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
                     <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
                     <h2>${escapeHtml(userData.userName)}</h2>
                 </div>`;
-            document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
-            const tween = gsap.from(`.${userData.userId}-player-list`, playerListAnimationObject);
+            const frag = htmlToElement(playerDOM);
+            const playerElem = frag.firstElementChild;
+            document.getElementById('players-list').appendChild(frag);
+            if (playerElem && typeof gsap !== 'undefined') {
+                gsap.from(playerElem, { opacity: 0, x: -70, duration: 1 });
+            }
         } else if (!connecting && !rejoin) {
             socket.roomData.users.delete(userData.userId)
             delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
-            gsap.to(`.${userData.userId}-player-list`, { opacity: 0, x: -70, duration: 1 });
-            Array.from(document.getElementById('players-list').children).splice(1 + Array.prototype.indexOf.call(document.getElementById('players-list').children, childToRemove)).forEach(child => {
-                // animate children of the players-list when a player leaves the room
-            });
-            setTimeout(() => {
-                document.getElementById('players-list').removeChild(childToRemove)
-            }, 1000);
+            if (childToRemove) {
+                if (typeof gsap !== 'undefined') {
+                    gsap.to(childToRemove, {
+                        opacity: 0,
+                        x: -70,
+                        duration: 1,
+                        onComplete: () => {
+                            if (childToRemove.parentNode) {
+                                childToRemove.parentNode.removeChild(childToRemove);
+                            }
+                        }
+                    });
+                } else if (childToRemove.parentNode) {
+                    childToRemove.parentNode.removeChild(childToRemove);
+                }
+            }
         } else if (connecting && rejoin) {
             socket.roomData.rejoinableUsers.delete(userData.userId);
             socket.roomData.users.add(userData.userId);

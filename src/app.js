@@ -799,15 +799,18 @@ io.on('connection', socket => {
             socketsData.get(socket.id)[property] = value;
         });
 
-        if (room.rejoinableUsers.has(data.userId)) {
+        const isRejoin = room.rejoinableUsers.has(data.userId);
+        if (isRejoin) {
             room.rejoinableUsers.delete(data.userId);
             room.users.add(data.userId);
-            if (room.gameData.wildChooser === data.userId || room.gameData.currentPlayer === data.userId) {
+            if (room.gameData && (room.gameData.wildChooser === data.userId || room.gameData.currentPlayer === data.userId)) {
                 cancelAutoPlayTimer(room);
             }
         }
 
+        const isNewUser = !room.usersData[data.userId];
         room.usersData[data.userId] = data;
+        room.users.add(data.userId);
         if (!room.usersCards.has(data.userId)) {
             room.usersCards.set(data.userId, []);
             room.usersCardCounts[data.userId] = 0;
@@ -817,10 +820,12 @@ io.on('connection', socket => {
         }
 
         socket.emit('init roomData', stringifyWithSets(room));
-        io.to(data.roomCode).except(socket.id).emit(
-            'update userList',
-            [data, true, room.started]
-        );
+        if (isNewUser || isRejoin) {
+            io.to(data.roomCode).except(socket.id).emit(
+                'update userList',
+                [data, true, room.started]
+            );
+        }
 
         if (room.started) {
             socket.emit('start game');

@@ -31,6 +31,7 @@ h1 {
     gap: 1rem;
     grid-template-columns: 3rem auto;
     align-items: center;
+    position: relative;
 }
 
 .player.owner h2::after {
