@@ -131,7 +131,7 @@ function updateCardPositions() {
 
         if (cardContainer.style.getPropertyValue('translate') == 'none') {
             cardContainer.style.setProperty('translate', 'var(--translate-default)');
-            cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+            cardContainer.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang))');
         }
     });
 }
@@ -257,7 +257,7 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
     let dragEndTween;
     Draggable.create(cardElement, {
         onPress: function (pointerEvent) {
-            cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+            cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang))');
         },
         onRelease: function (pointerEvent) {
             updateCardPositions();
@@ -291,7 +291,7 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
                     translate: 'var(--translate-default)',
                     duration: 0.5,
                     onComplete: () => {
-                        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang)');
+                        cardElement.style.setProperty('transform', 'translateX(-50%) rotate(var(--ang))');
                     },
                 });
             }
@@ -300,47 +300,26 @@ function addSelfCard(index = 0, cardName = getRandomCard(), update = true) {
 
 
     // card 3d updates
-    let firstMove = true;
-    let hoverTween;
-    innerCardElement.addEventListener('pointermove', e => {
-        const cardRect = innerCardElement.getBoundingClientRect()
+    cardElement.addEventListener('pointermove', e => {
+        if (isDragging) return;
+
+        const cardRect = cardElement.getBoundingClientRect();
         const centerX = (cardRect.left + cardRect.right) / 2;
         const centerY = (cardRect.top + cardRect.bottom) / 2;
 
         const [deltaX, deltaY] = [e.clientX - centerX, e.clientY - centerY];
 
-        const angX = -Math.sign(deltaY) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaY, zDepth]);
-        const angY = Math.sign(deltaX) * (180 / Math.PI) * angleBetVectors([0, zDepth], [deltaX, zDepth]);
+        const tiltZDepth = 200;
+        const angX = -(180 / Math.PI) * Math.atan2(deltaY, tiltZDepth);
+        const angY = (180 / Math.PI) * Math.atan2(deltaX, tiltZDepth);
 
-        is3dHovering = true;
-
-        try {
-            hoverTween.kill();
-        } catch { }
-
-        if (firstMove) {
-            firstMove = false;
-        } else {
-            let diff = Math.max(
-                Math.abs(parseFloat(innerCardElement.style.getPropertyValue('--rx')) - angX),
-                Math.abs(parseFloat(innerCardElement.style.getPropertyValue('--ry')) - angY)
-            )
-
-            if (diff > 1) {
-                hoverTween = gsap.to(innerCardElement, { '--rx': `${angX}deg`, '--ry': `${angY}deg`, duration: 0.1 });
-            } else {
-                innerCardElement.style = `--rx:${angX}deg;--ry:${angY}deg;`;
-            }
-        }
+        innerCardElement.style.setProperty('--rx', `${angX.toFixed(2)}deg`);
+        innerCardElement.style.setProperty('--ry', `${angY.toFixed(2)}deg`);
     });
 
-    innerCardElement.addEventListener('pointerleave', e => {
-        try {
-            hoverTween.kill();
-        } catch { }
-        innerCardElement.style = `--rx:0deg;--ry:0deg;`;
-        firstMove = true;
-        is3dHovering = false;
+    cardElement.addEventListener('pointerleave', e => {
+        innerCardElement.style.setProperty('--rx', '0deg');
+        innerCardElement.style.setProperty('--ry', '0deg');
     });
 
     if (update) updateCardPositions();

@@ -122,9 +122,9 @@ body {
 }
 
 .self-cards .card {
-    --rx: inherit;
-    --ry: inherit;
-    --rz: inherit;
+    --rx: 0deg;
+    --ry: 0deg;
+    --rz: 0deg;
     user-select: none;
     box-shadow: -4px 4px 4px 3px rgba(0, 0, 0, 0.25);
     border-radius: 5pt;
@@ -133,15 +133,17 @@ body {
     height: 10rem;
     aspect-ratio: 2 / 3;
 
-    transition: --rx 0.5s, --ry 0.5s, --rz 0.5s;
+    transition: --rx 0.3s ease-out, --ry 0.3s ease-out, --rz 0.3s ease-out;
 }
 
+.self-cards .card-container:hover .card,
 .self-cards .card:hover {
     transition: none;
 }
 
 .self-cards .card img {
     user-select: none;
+    pointer-events: none;
 }
 
 .user-info {
