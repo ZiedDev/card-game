@@ -201,7 +201,8 @@ function htmlToElement(html) {
 }
 
 function escapeHtml(unsafe) {
-    return unsafe
+    if (unsafe === undefined || unsafe === null) return '';
+    return String(unsafe)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")

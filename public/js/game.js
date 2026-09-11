@@ -894,6 +894,7 @@ const turnsList = document.getElementById('turns-list');
 const turnListUsers = document.getElementById('users-container');
 
 userNickname.textContent = socket.data.userName;
+userNickname.setAttribute('title', socket.data.userName);
 userIcon.src = `/assets/pfps/${socket.data.userPfp}.svg`;
 if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.data.userId] !== undefined) {
     userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
@@ -907,7 +908,7 @@ Object.values(socket.roomData.usersData).forEach(user => {
     const userDOM = `
         <div class="player-info ${isAway ? 'away' : ''}" id="${user.userId}-player-info">
           <img class="player-icon" src="/assets/pfps/${user.userPfp}.svg" alt=""></img>
-          <h2 class="player-nickname">${user.userName}</h2>
+          <h2 class="player-nickname" title="${escapeHtml(user.userName)}">${escapeHtml(user.userName)}</h2>
           <div class="player-cards-count">${cardCount}</div>
         </div>`;
     turnListUsers.appendChild(htmlToElement(userDOM))

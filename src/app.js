@@ -73,10 +73,20 @@ app.put('/request-room-ejs', (req, res) => {
 });
 
 app.post('/request-username-valid', (req, res) => {
-    const userName = req.body.userName;
+    const userName = req.body.userName ? req.body.userName.trim() : '';
     const roomCode = req.body.roomCode;
 
-    const usersData = roomsData.get(roomCode).usersData;
+    if (!userName || userName.length > 20) {
+        res.send(JSON.stringify(false));
+        return;
+    }
+
+    if (!roomsData.has(roomCode)) {
+        res.send(JSON.stringify(true));
+        return;
+    }
+
+    const usersData = roomsData.get(roomCode).usersData || {};
     const userNameSet = Object.keys(usersData).reduce((acc, key) => {
         acc.add(usersData[key].userName);
         return acc;
@@ -790,6 +800,10 @@ io.on('connection', socket => {
         if (room.cleanupTimeout) {
             clearTimeout(room.cleanupTimeout);
             room.cleanupTimeout = null;
+        }
+
+        if (data.userName) {
+            data.userName = String(data.userName).trim().slice(0, 20);
         }
 
         socket.join(data.roomCode);

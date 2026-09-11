@@ -162,6 +162,10 @@ body {
     font-weight: 900;
     padding: 0;
     margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 14rem;
 }
 
 .user-icon {
@@ -325,7 +329,7 @@ body {
     padding: 1rem;
     display: grid;
     gap: 1rem;
-    grid-template-columns: 3rem auto 2.882rem;
+    grid-template-columns: 3rem minmax(0, 1fr) 2.882rem;
     align-items: center;
     position: relative;
 
@@ -357,6 +361,10 @@ body {
     font-weight: 900;
     padding: 0;
     margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .player-info .player-cards-count {

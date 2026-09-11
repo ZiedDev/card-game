@@ -89,7 +89,12 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
 
         if (socket.joinType == 'rejoin') return;
 
-        document.getElementById('room-title').innerHTML = `${socket.roomData.usersData[socket.roomData.owner].userName}'s Room`;
+        const ownerName = (socket.roomData.usersData[socket.roomData.owner] && socket.roomData.usersData[socket.roomData.owner].userName) || 'Room';
+        const roomTitleEl = document.getElementById('room-title');
+        if (roomTitleEl) {
+            roomTitleEl.textContent = `${ownerName}'s Room`;
+            roomTitleEl.setAttribute('title', `${ownerName}'s Room`);
+        }
 
         if (typeof gsap !== 'undefined') {
             gsap.killTweensOf('#players-list .player');
@@ -101,7 +106,7 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
             const playerDOM = `
             <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""} ${socket.data.userId == userData.userId ? "self" : ""}" id="${userData.userId}-player-list">
                 <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
-                <h2>${escapeHtml(userData.userName)}</h2>
+                <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
             </div>`;
 
             document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
@@ -191,14 +196,17 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
                 const img = existingPlayer.querySelector('.user-image');
                 if (img) img.src = `/assets/pfps/${userData.userPfp}.svg`;
                 const name = existingPlayer.querySelector('h2');
-                if (name) name.textContent = userData.userName;
+                if (name) {
+                    name.textContent = userData.userName;
+                    name.setAttribute('title', userData.userName);
+                }
                 return;
             }
 
             const playerDOM = `
                 <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
                     <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
-                    <h2>${escapeHtml(userData.userName)}</h2>
+                    <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
                 </div>`;
             const frag = htmlToElement(playerDOM);
             const playerElem = frag.firstElementChild;

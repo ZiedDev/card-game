@@ -27,8 +27,20 @@ async function getUsernameValid(name, room) {
 }
 
 playButton.addEventListener('click', async e => {
-    let nickname = nicknameInput.value
+    let nickname = nicknameInput.value.trim();
     if (nickname) {
+        if (nickname.length > 20) {
+            createModal(
+                "Nickname must be 20 characters or less",
+                [],
+                [
+                    "Okay",
+                    () => { }
+                ]
+            );
+            return;
+        }
+
         if (urlParams.get('r') && !(await getUsernameValid(nickname, urlParams.get('r')))) {
             createModal(
                 "Nickname already taken in room",

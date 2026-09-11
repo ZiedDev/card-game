@@ -29,7 +29,7 @@ h1 {
     padding: 1rem;
     display: grid;
     gap: 1rem;
-    grid-template-columns: 3rem auto;
+    grid-template-columns: 3rem minmax(0, 1fr);
     align-items: center;
     position: relative;
 }
