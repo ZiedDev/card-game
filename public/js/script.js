@@ -248,9 +248,16 @@ function rangeLerp(
 }
 
 function stringifyWithSets(obj) {
+    const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
         if (value instanceof Set) {
             return { type: 'Set', values: Array.from(value) };
+        }
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return undefined;
+            }
+            seen.add(value);
         }
         return value;
     });

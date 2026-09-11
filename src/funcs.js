@@ -5,9 +5,24 @@ const generateRandomString = (length) => {
 };
 
 function stringifyWithSets(obj) {
+    const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
+        if (
+            key === 'autoPlayTimeout' ||
+            key === 'cleanupTimeout' ||
+            key === 'userIterator' ||
+            (value && typeof value === 'object' && (value.constructor?.name === 'Timeout' || value._idlePrev !== undefined))
+        ) {
+            return undefined;
+        }
         if (value instanceof Set) {
             return { type: 'Set', values: Array.from(value) };
+        }
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return undefined;
+            }
+            seen.add(value);
         }
         return value;
     });
