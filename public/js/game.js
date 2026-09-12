@@ -798,10 +798,17 @@ socket.on('update turn', data => {
             updateTurnIndicator(index);
             playerInfo.classList.add('turn');
         }
-        playerInfo.querySelector('.player-cards-count').innerText = socket.roomData.usersCardCounts[playerInfoId];
+        const isAway = socket.roomData.rejoinableUsers && socket.roomData.rejoinableUsers.has(playerInfoId);
+        playerInfo.classList.toggle('away', !!isAway);
+        if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[playerInfoId] !== undefined) {
+            const countEl = playerInfo.querySelector('.player-cards-count');
+            if (countEl) countEl.innerText = socket.roomData.usersCardCounts[playerInfoId];
+        }
     });
 
-    userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
+    if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.data.userId] !== undefined) {
+        userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
+    }
     updateSkipButton();
 });
 
@@ -879,7 +886,13 @@ if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.da
     userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
 }
 
-Object.values(socket.roomData.usersData).forEach(user => {
+const playerIds = (socket.roomData.permaUserSet && socket.roomData.permaUserSet.size > 0)
+    ? Array.from(socket.roomData.permaUserSet)
+    : Object.keys(socket.roomData.usersData || {});
+
+playerIds.forEach(pId => {
+    const user = socket.roomData.usersData && socket.roomData.usersData[pId];
+    if (!user) return;
     const cardCount = (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[user.userId] !== undefined)
         ? socket.roomData.usersCardCounts[user.userId]
         : 7;
@@ -890,7 +903,7 @@ Object.values(socket.roomData.usersData).forEach(user => {
           <h2 class="player-nickname" title="${escapeHtml(user.userName)}">${escapeHtml(user.userName)}</h2>
           <div class="player-cards-count">${cardCount}</div>
         </div>`;
-    turnListUsers.appendChild(htmlToElement(userDOM))
+    turnListUsers.appendChild(htmlToElement(userDOM));
 });
 socket.isSelfTurn = socket.roomData && socket.roomData.gameData && (socket.roomData.gameData.currentPlayer == socket.data.userId);
 updateSkipButton();

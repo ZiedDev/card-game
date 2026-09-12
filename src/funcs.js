@@ -10,6 +10,7 @@ function stringifyWithSets(obj) {
         if (
             key === 'autoPlayTimeout' ||
             key === 'cleanupTimeout' ||
+            key === 'ownerTransferTimeout' ||
             key === 'userIterator' ||
             (value && typeof value === 'object' && (value.constructor?.name === 'Timeout' || value._idlePrev !== undefined))
         ) {
@@ -178,7 +179,21 @@ function pullAndUpdateAvailableDeck(roomData, nonAction = false) {
     return [choice, reshuffled];
 }
 
+const DEFAULT_GAME_PREFERENCES = {
+    "Jump-in": "enable",
+    "Stack draw-2 and draw-4 cards": "enable",
+    "draw-2 and draw-4 skips": "skip",
+    "Allow drawing even with a valid card": "enable",
+    "Manual Turn Skip Button": "enable",
+    "Draw Limit": "maximum 2 cards",
+    "Number of decks": "1",
+    "Wild cards": "enable",
+    "Wild draw 2 card": "enable",
+    "Wild stack card": "enable",
+};
+
 module.exports = {
+    DEFAULT_GAME_PREFERENCES,
     generateRandomString,
     stringifyWithSets,
     parseWithSets,

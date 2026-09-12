@@ -82,6 +82,8 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
     socket.selfCards = []
 
 
+    let inviteButtonIconTimeout = 0;
+
     socket.on('init roomData', data => {
         socket.roomData = parseWithSets(data);
         socket.isOwner = socket.roomData.owner == userId.val;
@@ -99,97 +101,123 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
         if (typeof gsap !== 'undefined') {
             gsap.killTweensOf('#players-list .player');
         }
-        document.getElementById('players-list').innerHTML = '';
-        document.getElementById('settings').innerHTML = '';
+        const playersListEl = document.getElementById('players-list');
+        const settingsEl = document.getElementById('settings');
+        if (playersListEl) playersListEl.innerHTML = '';
+        if (settingsEl) settingsEl.innerHTML = '';
 
-        Object.values(socket.roomData.usersData).forEach(userData => {
-            const playerDOM = `
-            <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""} ${socket.data.userId == userData.userId ? "self" : ""}" id="${userData.userId}-player-list">
-                <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
-                <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
-            </div>`;
+        if (playersListEl && socket.roomData.usersData) {
+            Object.values(socket.roomData.usersData).forEach(userData => {
+                const playerDOM = `
+                <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""} ${socket.data.userId == userData.userId ? "self" : ""}" id="${userData.userId}-player-list">
+                    <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
+                    <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
+                </div>`;
 
-            document.getElementById('players-list').appendChild(htmlToElement(playerDOM));
-        });
-        if (typeof gsap !== 'undefined') {
-            gsap.from('#players-list .player', playerListAnimationObject);
+                playersListEl.appendChild(htmlToElement(playerDOM));
+            });
+            if (typeof gsap !== 'undefined') {
+                gsap.from('#players-list .player', playerListAnimationObject);
+            }
         }
 
         const inviteButton = document.getElementById('invite-button');
-        let inviteButtonIconTimeout = 0;
-        inviteButton.addEventListener('click', e => {
-            let text = window.location.href;
-            const copyContent = navigator.clipboard.writeText(text);
-            inviteButton.classList.add('invite-button-copy');
-            clearTimeout(inviteButtonIconTimeout);
-            inviteButtonIconTimeout = setTimeout(() => {
-                inviteButton.classList.remove('invite-button-copy');
-            }, 5 * 1000);
-        });
+        if (inviteButton) {
+            inviteButton.onclick = e => {
+                let text = window.location.href;
+                navigator.clipboard.writeText(text);
+                inviteButton.classList.add('invite-button-copy');
+                clearTimeout(inviteButtonIconTimeout);
+                inviteButtonIconTimeout = setTimeout(() => {
+                    inviteButton.classList.remove('invite-button-copy');
+                }, 5 * 1000);
+            };
+        }
+
+        const startButton = document.getElementById('start-button');
+        const currentPrefs = socket.roomData.gamePreferences || userGamePreferences.val || {};
 
         if (socket.isOwner) {
-            document.getElementById('start-button').disabled = false;
-            document.getElementById('start-button').addEventListener('click', e => {
-                socket.emit('start game');
-            });
+            if (startButton) {
+                startButton.disabled = false;
+                startButton.onclick = e => {
+                    socket.emit('start game');
+                };
+            }
 
-            Object.entries(userGamePreferences.val).forEach(([key, value]) => {
-                const selectDOM = `
-                        <div class="select-container">
-                            <h2>${key}</h2>
-                            <select name="${key}-option" id="${key}-option">
-                                ${gamePreferenceOptions[key].options.map(option =>
-                    `<option value="${option}">${option}</option>`
-                ).join('\n')}
-                            </select>
-                            <label class="arrow" for="${key}-option">▼</label>
-                        </div>`;
-                document.getElementById('settings').appendChild(htmlToElement(selectDOM));
-                document.getElementById(`${key}-option`).value = value;
-                document.getElementById(`${key}-option`).addEventListener('change', e => {
-                    userGamePreferences.val[key] = document.getElementById(`${key}-option`).value;
-                    userGamePreferences.update();
-                    socket.emit('update gamePreferences', userGamePreferences.val);
+            if (settingsEl) {
+                Object.keys(gamePreferenceOptions).forEach(key => {
+                    const val = (userGamePreferences.val && userGamePreferences.val[key]) || currentPrefs[key] || gamePreferenceOptions[key].default;
+                    const selectDOM = `
+                            <div class="select-container">
+                                <h2>${escapeHtml(key)}</h2>
+                                <select name="${escapeHtml(key)}-option" id="${escapeHtml(key)}-option">
+                                    ${gamePreferenceOptions[key].options.map(option =>
+                        `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`
+                    ).join('\n')}
+                                </select>
+                                <label class="arrow" for="${escapeHtml(key)}-option">▼</label>
+                            </div>`;
+                    settingsEl.appendChild(htmlToElement(selectDOM));
+                    const selectEl = document.getElementById(`${key}-option`);
+                    if (selectEl) {
+                        selectEl.value = val;
+                        selectEl.addEventListener('change', e => {
+                            userGamePreferences.val[key] = selectEl.value;
+                            userGamePreferences.update();
+                            socket.emit('update gamePreferences', userGamePreferences.val);
+                        });
+                    }
                 });
-            });
+            }
         } else {
-            document.getElementById('start-button').disabled = true;
+            if (startButton) {
+                startButton.disabled = true;
+                startButton.onclick = null;
+            }
 
-            Object.entries(socket.roomData.gamePreferences).forEach(([key, value]) => {
-                const selectDOM = `
-                    <div class="select-container">
-                        <h2>${key}</h2>
-                        <select name="${key}-option" id="${key}-option" disabled style="padding: 0 0.75rem;">
-                            <option value="${value}">${value}</option>
-                        </select>
-                    </div>`;
-                document.getElementById('settings').appendChild(htmlToElement(selectDOM));
-            });
+            if (settingsEl) {
+                Object.keys(gamePreferenceOptions).forEach(key => {
+                    const val = currentPrefs[key] || gamePreferenceOptions[key].default;
+                    const selectDOM = `
+                        <div class="select-container">
+                            <h2>${escapeHtml(key)}</h2>
+                            <select name="${escapeHtml(key)}-option" id="${escapeHtml(key)}-option" disabled style="padding: 0 0.75rem;">
+                                <option value="${escapeHtml(val)}">${escapeHtml(val)}</option>
+                            </select>
+                        </div>`;
+                    settingsEl.appendChild(htmlToElement(selectDOM));
+                });
+            }
         }
     });
 
     socket.on('update gamePreferences', data => {
-        socket.roomData.gamePreferences = data;
+        socket.roomData.gamePreferences = data || {};
         if (socket.joinType == 'rejoin') return;
-        document.getElementById('settings').innerHTML = '';
-        Object.entries(data).forEach(([key, value]) => {
+        const settingsEl = document.getElementById('settings');
+        if (!settingsEl || socket.isOwner) return;
+        settingsEl.innerHTML = '';
+        Object.keys(gamePreferenceOptions).forEach(key => {
+            const val = socket.roomData.gamePreferences[key] || gamePreferenceOptions[key].default;
             const selectDOM = `
                 <div class="select-container">
-                    <h2>${key}</h2>
-                    <select name="${key}-option" id="${key}-option" disabled style="padding: 0 0.75rem;">
-                        <option value="${value}">${value}</option>
+                    <h2>${escapeHtml(key)}</h2>
+                    <select name="${escapeHtml(key)}-option" id="${escapeHtml(key)}-option" disabled style="padding: 0 0.75rem;">
+                        <option value="${escapeHtml(val)}">${escapeHtml(val)}</option>
                     </select>
                 </div>`;
-            document.getElementById('settings').appendChild(htmlToElement(selectDOM));
+            settingsEl.appendChild(htmlToElement(selectDOM));
         });
     });
 
     socket.on('update userList', data => {
         const [userData, connecting, rejoin] = data;
+        if (!userData || !userData.userId) return;
 
         if (connecting && !rejoin) {
-            socket.roomData.users.add(userData.userId)
-            socket.roomData.usersData[userData.userId] = userData;
+            if (socket.roomData && socket.roomData.users) socket.roomData.users.add(userData.userId);
+            if (socket.roomData && socket.roomData.usersData) socket.roomData.usersData[userData.userId] = userData;
 
             const existingPlayer = document.getElementById(`${userData.userId}-player-list`);
             if (existingPlayer) {
@@ -200,23 +228,27 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
                     name.textContent = userData.userName;
                     name.setAttribute('title', userData.userName);
                 }
+                existingPlayer.classList.toggle('owner', socket.roomData.owner == userData.userId);
                 return;
             }
 
-            const playerDOM = `
-                <div class="player ${userData.userId}-player-list ${socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
-                    <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
-                    <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
-                </div>`;
-            const frag = htmlToElement(playerDOM);
-            const playerElem = frag.firstElementChild;
-            document.getElementById('players-list').appendChild(frag);
-            if (playerElem && typeof gsap !== 'undefined') {
-                gsap.from(playerElem, { opacity: 0, x: -70, duration: 1 });
+            const playersListEl = document.getElementById('players-list');
+            if (playersListEl) {
+                const playerDOM = `
+                    <div class="player ${userData.userId}-player-list ${socket.roomData && socket.roomData.owner == userData.userId ? "owner" : ""}" id="${userData.userId}-player-list">
+                        <img class="user-image" src="/assets/pfps/${userData.userPfp}.svg" alt="">
+                        <h2 title="${escapeHtml(userData.userName)}">${escapeHtml(userData.userName)}</h2>
+                    </div>`;
+                const frag = htmlToElement(playerDOM);
+                const playerElem = frag.firstElementChild;
+                playersListEl.appendChild(frag);
+                if (playerElem && typeof gsap !== 'undefined') {
+                    gsap.from(playerElem, { opacity: 0, x: -70, duration: 1 });
+                }
             }
         } else if (!connecting && !rejoin) {
-            socket.roomData.users.delete(userData.userId)
-            delete socket.roomData.usersData[userData.userId];
+            if (socket.roomData && socket.roomData.users) socket.roomData.users.delete(userData.userId);
+            if (socket.roomData && socket.roomData.usersData) delete socket.roomData.usersData[userData.userId];
             const childToRemove = document.getElementById(`${userData.userId}-player-list`);
             if (childToRemove) {
                 if (typeof gsap !== 'undefined') {
@@ -235,9 +267,10 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
                 }
             }
         } else if (connecting && rejoin) {
-            socket.roomData.rejoinableUsers.delete(userData.userId);
-            socket.roomData.users.add(userData.userId);
-            // remove from random ai mode
+            if (socket.roomData && socket.roomData.rejoinableUsers) socket.roomData.rejoinableUsers.delete(userData.userId);
+            if (socket.roomData && socket.roomData.users) socket.roomData.users.add(userData.userId);
+            if (socket.roomData && socket.roomData.usersData) socket.roomData.usersData[userData.userId] = userData;
+            // remove from away mode
             const playerInfo = document.getElementById(`${userData.userId}-player-info`);
             if (playerInfo) {
                 playerInfo.classList.remove('away');
@@ -246,9 +279,9 @@ const playerListAnimationObject = { opacity: 0, x: -70, duration: 1, stagger: 0.
                 }
             }
         } else if (!connecting && rejoin) {
-            socket.roomData.rejoinableUsers.add(userData.userId);
-            socket.roomData.users.delete(userData.userId);
-            // put on random ai mode
+            if (socket.roomData && socket.roomData.rejoinableUsers) socket.roomData.rejoinableUsers.add(userData.userId);
+            if (socket.roomData && socket.roomData.users) socket.roomData.users.delete(userData.userId);
+            // put on away mode
             const playerInfo = document.getElementById(`${userData.userId}-player-info`);
             if (playerInfo) {
                 playerInfo.classList.add('away');

@@ -19,6 +19,7 @@ async function getUsernameValid(name, room) {
         body: JSON.stringify({
             userName: name,
             roomCode: room,
+            userId: userId.val,
         }),
     });
     const res = await response.json();

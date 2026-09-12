@@ -9,13 +9,16 @@ const maxPileSize = process.env.MAX_PILE_SIZE = process.env.MAX_PILE_SIZE || 10;
 const TIMINGS = {
     GRACE_PERIOD: parseInt(process.env.GRACE_PERIOD || 5000),                // 5s grace period for disconnected player / wild chooser
     ABANDONED_ROOM_TIMEOUT: parseInt(process.env.ABANDONED_ROOM_TIMEOUT || 5 * 60 * 1000), // 5 min timeout before deleting empty room
+    OWNER_TRANSFER_TIMEOUT: parseInt(process.env.OWNER_TRANSFER_TIMEOUT || 5000), // 5s grace period before transferring ownership on owner disconnect
 };
 
 // library imports
 const express = require('express');
 
 // js imports
-const { generateRandomString,
+const {
+    DEFAULT_GAME_PREFERENCES,
+    generateRandomString,
     stringifyWithSets,
     parseWithSets,
     Pair,
@@ -75,6 +78,7 @@ app.put('/request-room-ejs', (req, res) => {
 app.post('/request-username-valid', (req, res) => {
     const userName = req.body.userName ? req.body.userName.trim() : '';
     const roomCode = req.body.roomCode;
+    const currentUserId = req.body.userId;
 
     if (!userName || userName.length > 20) {
         res.send(JSON.stringify(false));
@@ -87,12 +91,11 @@ app.post('/request-username-valid', (req, res) => {
     }
 
     const usersData = roomsData.get(roomCode).usersData || {};
-    const userNameSet = Object.keys(usersData).reduce((acc, key) => {
-        acc.add(usersData[key].userName);
-        return acc;
-    }, new Set());
+    const isTaken = Object.entries(usersData).some(([uid, uData]) => {
+        return uid !== currentUserId && uData.userName && uData.userName.toLowerCase() === userName.toLowerCase();
+    });
 
-    res.send(JSON.stringify(!userNameSet.has(userName)));
+    res.send(JSON.stringify(!isTaken));
 });
 
 app.post('/createRoom', (req, res) => {
@@ -111,7 +114,7 @@ app.post('/createRoom', (req, res) => {
         rejoinableUsers: new Set(),
         permaUserSet: null,
         usersData: {},
-        gamePreferences: {},
+        gamePreferences: { ...DEFAULT_GAME_PREFERENCES },
 
         gameData: {
             direction: 'cw',
@@ -127,9 +130,11 @@ app.post('/createRoom', (req, res) => {
         lastPileCards: [],
         usersCardCounts: {},
 
-        // not sended to client
+        // not sent to client
         userIterator: null,
         autoPlayTimeout: null,
+        ownerTransferTimeout: null,
+        cleanupTimeout: null,
         usersCards: new Map(),
         availableDeck: new Map(),
         discardDeck: new Map(),
@@ -139,31 +144,35 @@ app.post('/createRoom', (req, res) => {
 });
 
 app.post('/room/:roomId', (req, res) => {
-    const roomId = req.params.roomId
-    const userId = req.body.userId
-    const confName = req.body.confName
+    const roomId = req.params.roomId;
+    const userId = req.body.userId;
+    const confName = req.body.confName;
 
-    if (!rooms.has(roomId)) { // redundant
+    if (!rooms.has(roomId)) {
         res.send('"false"');
         return;
-    };
+    }
     const roomData = roomsData.get(roomId);
-    if (roomData.users.has(userId)) {
-        res.send('"duplicate"');
-        return;
-    }
-    if (roomData.rejoinableUsers.has(userId)) {
-        roomsData.get(roomId).rejoinableUsers.delete(userId);
-        roomsData.get(roomId).users.add(userId);
-        res.send('"rejoin"');
-        return;
-    }
+
     if (roomData.started) {
-        res.send('"watch"');
-        return;
+        const isParticipant = (roomData.permaUserSet && roomData.permaUserSet.has(userId)) ||
+            roomData.rejoinableUsers.has(userId) ||
+            roomData.users.has(userId);
+        if (isParticipant) {
+            res.send('"rejoin"');
+            return;
+        } else {
+            res.send('"watch"');
+            return;
+        }
     }
-    if (confName) {
-        roomsData.get(roomId).users.add(userId);
+
+    // Pre-game lobby:
+    const isKnownUser = roomData.users.has(userId) ||
+        (roomData.usersData && !!roomData.usersData[userId]) ||
+        roomData.owner === userId;
+
+    if (isKnownUser || confName) {
         res.send('"join"');
         return;
     } else {
@@ -755,14 +764,21 @@ io.on('connection', socket => {
                 room.rejoinableUsers.add(socketData.userId);
                 scheduleAutoPlayIfAway(roomCode);
             } else {
-                delete room.usersData[socketData.userId];
-                const newOwnerId = room.users.values().next().value;
-                if (room.owner == socketData.userId && newOwnerId) {
-                    room.owner = newOwnerId;
-                    if (room.usersData[newOwnerId]) {
-                        room.gamePreferences = room.usersData[newOwnerId].userGamePreferences;
-                    }
-                    io.to(roomCode).emit('init roomData', stringifyWithSets(room));
+                // In pre-game lobby:
+                if (room.owner === socketData.userId) {
+                    if (room.ownerTransferTimeout) clearTimeout(room.ownerTransferTimeout);
+                    room.ownerTransferTimeout = setTimeout(() => {
+                        if (!roomsData.has(roomCode)) return;
+                        const r = roomsData.get(roomCode);
+                        if (!r.started && r.owner === socketData.userId && !r.users.has(socketData.userId)) {
+                            const newOwnerId = r.users.values().next().value;
+                            if (newOwnerId) {
+                                r.owner = newOwnerId;
+                                delete r.usersData[socketData.userId];
+                                io.to(roomCode).emit('init roomData', stringifyWithSets(r));
+                            }
+                        }
+                    }, TIMINGS.OWNER_TRANSFER_TIMEOUT);
                 }
             }
 
@@ -771,6 +787,7 @@ io.on('connection', socket => {
                 if (!room.started || room.finished) {
                     if (room.cleanupTimeout) clearTimeout(room.cleanupTimeout);
                     cancelAutoPlayTimer(room);
+                    if (room.ownerTransferTimeout) clearTimeout(room.ownerTransferTimeout);
                     rooms.delete(roomCode);
                     roomsData.delete(roomCode);
                     console.log(`Room [${roomCode}] cleaned up.`);
@@ -779,6 +796,7 @@ io.on('connection', socket => {
                     room.cleanupTimeout = setTimeout(() => {
                         if (roomsData.has(roomCode) && roomsData.get(roomCode).users.size === 0) {
                             cancelAutoPlayTimer(roomsData.get(roomCode));
+                            if (roomsData.get(roomCode).ownerTransferTimeout) clearTimeout(roomsData.get(roomCode).ownerTransferTimeout);
                             rooms.delete(roomCode);
                             roomsData.delete(roomCode);
                             console.log(`Abandoned Room [${roomCode}] cleaned up after timeout.`);
@@ -809,41 +827,70 @@ io.on('connection', socket => {
         socket.join(data.roomCode);
 
         // init socketData
-        Object.entries(data).forEach(([property, value]) => { // semi-unnecessary
+        Object.entries(data).forEach(([property, value]) => {
             socketsData.get(socket.id)[property] = value;
         });
 
-        const isRejoin = room.rejoinableUsers.has(data.userId);
+        const isGameParticipant = room.permaUserSet && room.permaUserSet.has(data.userId);
+        const wasAway = room.rejoinableUsers.has(data.userId);
+        const isRejoin = room.started && (wasAway || isGameParticipant);
+
         if (isRejoin) {
             room.rejoinableUsers.delete(data.userId);
             room.users.add(data.userId);
+            room.usersData[data.userId] = data;
             if (room.gameData && (room.gameData.wildChooser === data.userId || room.gameData.currentPlayer === data.userId)) {
                 cancelAutoPlayTimer(room);
             }
-        }
-
-        const isNewUser = !room.usersData[data.userId];
-        room.usersData[data.userId] = data;
-        room.users.add(data.userId);
-        if (!room.usersCards.has(data.userId)) {
-            room.usersCards.set(data.userId, []);
-            room.usersCardCounts[data.userId] = 0;
-        }
-        if (room.owner == data.userId) {
-            room.gamePreferences = data.userGamePreferences;
+        } else if (!room.started) {
+            if (room.owner === data.userId && room.ownerTransferTimeout) {
+                clearTimeout(room.ownerTransferTimeout);
+                room.ownerTransferTimeout = null;
+            }
+            room.users.add(data.userId);
+            room.usersData[data.userId] = data;
+            if (!room.usersCards.has(data.userId)) {
+                room.usersCards.set(data.userId, []);
+                room.usersCardCounts[data.userId] = 0;
+            }
+            // Only update room preferences if owner and game hasn't started yet
+            if (room.owner === data.userId && data.userGamePreferences) {
+                room.gamePreferences = { ...DEFAULT_GAME_PREFERENCES, ...data.userGamePreferences };
+            }
+        } else {
+            // Started game, non-participant watcher
+            room.users.add(data.userId);
+            room.usersData[data.userId] = data;
         }
 
         socket.emit('init roomData', stringifyWithSets(room));
-        if (isNewUser || isRejoin) {
+
+        // Always broadcast userList update to other clients
+        if (room.started) {
+            if (isRejoin) {
+                io.to(data.roomCode).except(socket.id).emit(
+                    'update userList',
+                    [data, true, true]
+                );
+            }
+        } else {
             io.to(data.roomCode).except(socket.id).emit(
                 'update userList',
-                [data, true, room.started]
+                [data, true, false]
             );
         }
 
         if (room.started) {
             socket.emit('start game');
-            if (room.gameData.wildChooser === data.userId && !room.gameData.wildColor) {
+            if (room.finished) {
+                const winnerData = room.usersData[room.gameData.winner] || {};
+                socket.emit('game over', {
+                    winnerId: room.gameData.winner,
+                    winnerName: winnerData.userName || 'Player',
+                    winnerPfp: winnerData.userPfp !== undefined ? winnerData.userPfp : 0,
+                    roomData: stringifyWithSets(room)
+                });
+            } else if (room.gameData.wildChooser === data.userId && !room.gameData.wildColor) {
                 socket.emit('request wildColor');
             } else {
                 scheduleAutoPlayIfAway(data.roomCode);
@@ -916,8 +963,14 @@ io.on('connection', socket => {
         const socketData = socketsData.get(socket.id);
         if (!socketData || !socketData.roomCode || !roomsData.has(socketData.roomCode)) return;
         let roomCode = socketData.roomCode;
-        roomsData.get(roomCode).gamePreferences = data;
-        io.to(roomCode).except(socket.id).emit('update gamePreferences', data);
+        const room = roomsData.get(roomCode);
+        if (!room || room.started || room.owner !== socketData.userId) return;
+        room.gamePreferences = { ...DEFAULT_GAME_PREFERENCES, ...(data || {}) };
+        socketData.userGamePreferences = room.gamePreferences;
+        if (room.usersData[socketData.userId]) {
+            room.usersData[socketData.userId].userGamePreferences = room.gamePreferences;
+        }
+        io.to(roomCode).except(socket.id).emit('update gamePreferences', room.gamePreferences);
     });
 
     socket.on('draw cards', (params, callback) => {
