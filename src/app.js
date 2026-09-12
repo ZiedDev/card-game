@@ -12,6 +12,9 @@ const TIMINGS = {
     OWNER_TRANSFER_TIMEOUT: parseInt(process.env.OWNER_TRANSFER_TIMEOUT || 5000), // 5s grace period before transferring ownership on owner disconnect
 };
 
+// Temporary test mode: scales down the deck size to easily test low-deck & empty-deck scenarios
+const TEST_SMALL_DECK = process.env.TEST_SMALL_DECK !== undefined ? process.env.TEST_SMALL_DECK === 'true' : true;
+
 // library imports
 const express = require('express');
 
@@ -126,6 +129,7 @@ app.post('/createRoom', (req, res) => {
             wildChooser: null,
             stackDraw: null,
             consecutiveDraws: 0,
+            deckCardCount: 0,
         },
         lastPileCards: [],
         usersCardCounts: {},
@@ -221,7 +225,11 @@ const drawCards = (socket, params) => {
             [choice, reshuffle] = pullAndUpdateAvailableDeck(room, params.nonAction);
             if (choice === null) break;
             result.push(choice);
-            if (reshuffle) io.to(roomCode).emit('reshuffle');
+            if (reshuffle) {
+                room.gameData.deckCardCount = sumMap(room.availableDeck);
+                room.lastPileCards = [room.gameData.groundCard];
+                io.to(roomCode).emit('reshuffle', { deckCardCount: room.gameData.deckCardCount });
+            }
             attempts++;
         }
     } else {
@@ -229,9 +237,14 @@ const drawCards = (socket, params) => {
             let [choice, reshuffle] = pullAndUpdateAvailableDeck(room, params.nonAction);
             if (choice === null) break;
             result.push(choice);
-            if (reshuffle) io.to(roomCode).emit('reshuffle');
+            if (reshuffle) {
+                room.gameData.deckCardCount = sumMap(room.availableDeck);
+                room.lastPileCards = [room.gameData.groundCard];
+                io.to(roomCode).emit('reshuffle', { deckCardCount: room.gameData.deckCardCount });
+            }
         }
     }
+    room.gameData.deckCardCount = sumMap(room.availableDeck);
     if (params.grantUser && result.length > 0) {
         const hand = room.usersCards.get(params.grantUser);
         if (hand) {
@@ -373,16 +386,26 @@ const attemptThrow = (socket, params) => {
         (room.discardDeck.get(cardName) || 0) + 1
     );
 
+    // If available deck is empty, immediately reshuffle discard cards back into available deck
+    let reshuffled = false;
+    if (!isGameOver && sumMap(room.availableDeck) <= 0) {
+        reshuffled = reshuffleDiscardIntoAvailable(room);
+        if (reshuffled) {
+            room.gameData.deckCardCount = sumMap(room.availableDeck);
+            room.lastPileCards = [room.gameData.groundCard];
+        } else {
+            room.gameData.deckCardCount = 0;
+        }
+    } else {
+        room.gameData.deckCardCount = sumMap(room.availableDeck);
+    }
+
     if (isGameOver) {
         room.finished = true;
         room.gameData.winner = currUser;
     }
 
-    // socket emits
-    io.to(roomCode).emit('update turn', {
-        roomData: stringifyWithSets(room)
-    });
-
+    // socket emits: emit 'throw other' FIRST so clients register the card landing on the discard pile before reshuffle
     if (socketId) {
         io.to(roomCode).except(socketId).emit('throw other', {
             cardName: cardName,
@@ -394,6 +417,14 @@ const attemptThrow = (socket, params) => {
             exceptUser: currUser,
         });
     }
+
+    if (reshuffled) {
+        io.to(roomCode).emit('reshuffle', { deckCardCount: room.gameData.deckCardCount });
+    }
+
+    io.to(roomCode).emit('update turn', {
+        roomData: stringifyWithSets(room)
+    });
 
     if (isGameOver) {
         const winnerData = room.usersData[currUser] || {};
@@ -586,12 +617,14 @@ const attemptDraw = (socket, params) => {
 
     if (stackDraw && wildColor) {
         result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
+        room.gameData.stackDraw = false;
         if (result == null) {
             let nextUser = advanceTurn(room);
             room.gameData.currentPlayer = nextUser;
             io.to(roomCode).emit('update turn', {
                 roomData: stringifyWithSets(room)
             });
+            scheduleAutoPlayIfAway(roomCode);
             return null;
         }
         if (socketId) {
@@ -605,7 +638,6 @@ const attemptDraw = (socket, params) => {
                 exceptUser: currUser,
             });
         }
-        room.gameData.stackDraw = false;
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
             let nextUser = advanceTurn(room);
@@ -620,6 +652,11 @@ const attemptDraw = (socket, params) => {
 
     if (drawSum) {
         result = drawCards(socket, { count: drawSum, grantUser: currUser, tillColor: null, nonAction: null, });
+        room.gameData.drawSum = 0;
+        io.to(roomCode).emit('update drawSum', {
+            drawSum: 0
+        });
+
         if (result == null) {
             let nextUser = advanceTurn(room);
             room.gameData.currentPlayer = nextUser;
@@ -631,19 +668,15 @@ const attemptDraw = (socket, params) => {
         }
         if (socketId) {
             io.to(roomCode).except(socketId).emit('draw other', {
-                cardCount: drawSum,
+                cardCount: result.length,
                 exceptUser: currUser,
             });
         } else {
             io.to(roomCode).emit('draw other', {
-                cardCount: drawSum,
+                cardCount: result.length,
                 exceptUser: currUser,
             });
         }
-        room.gameData.drawSum = 0;
-        io.to(roomCode).emit('update drawSum', {
-            drawSum: room.gameData.drawSum
-        });
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
             let nextUser = advanceTurn(room);
@@ -733,7 +766,13 @@ const attemptSkip = (socket, params) => {
     }
 
     if (room.gameData.drawSum > 0 || room.gameData.stackDraw) {
-        return false;
+        if (sumMap(room.availableDeck) <= 0 && sumMap(room.discardDeck) <= 1) {
+            room.gameData.drawSum = 0;
+            room.gameData.stackDraw = false;
+            io.to(roomCode).emit('update drawSum', { drawSum: 0 });
+        } else {
+            return false;
+        }
     }
 
     let nextUser = advanceTurn(room);
@@ -917,9 +956,10 @@ io.on('connection', socket => {
         room.discardDeck.clear();
         Object.entries(cardCount).forEach(([key, value]) => {
             Object.entries(value).forEach(([subkey, count]) => {
-                if (room.gamePreferences['Wild cards'] == 'disable' && key == 'wild') {
-                    return;
-                } else {
+                if (key == 'wild') {
+                    if (room.gamePreferences['Wild cards'] == 'disable') {
+                        return;
+                    }
                     if (room.gamePreferences['Wild draw 2 card'] == 'disable' && subkey == 'draw') {
                         return;
                     }
@@ -927,6 +967,15 @@ io.on('connection', socket => {
                         return;
                     }
                 }
+
+                // Temporary small deck testing: only keep numbers 0-2 and 1 of each card
+                if (TEST_SMALL_DECK) {
+                    if (['3', '4', '5', '6', '7', '8', '9', 'reverse', 'skip'].includes(subkey)) {
+                        return;
+                    }
+                    count = 1;
+                }
+
                 room.availableDeck.set(
                     subkey + '_' + key,
                     count * parseInt(room.gamePreferences['Number of decks'] || 1)
@@ -938,21 +987,24 @@ io.on('connection', socket => {
             });
         });
 
+        const initialHandSize = TEST_SMALL_DECK ? 3 : 7;
         const selectedGroundCard = drawCards(socket, { count: 1, grantUser: null, tillColor: null, nonAction: true, })[0];
         room.gameData.groundCard = selectedGroundCard;
         room.lastPileCards = [selectedGroundCard];
         room.discardDeck.set(selectedGroundCard, 1);
 
-        // Server-authoritative initial hand dealing (7 cards per user)
+        // Server-authoritative initial hand dealing
         room.users.forEach(userId => {
             const userHand = [];
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < initialHandSize; i++) {
                 let [card] = pullAndUpdateAvailableDeck(room);
                 if (card) userHand.push(card);
             }
             room.usersCards.set(userId, userHand);
             room.usersCardCounts[userId] = userHand.length;
         });
+
+        room.gameData.deckCardCount = sumMap(room.availableDeck);
 
         io.to(roomCode).emit('start game');
         io.to(roomCode).emit('init roomData', stringifyWithSets(room));

@@ -136,16 +136,31 @@ function updateCardPositions() {
     });
 }
 
-function updateDeckCards(deckCardCount = 10) {
+let isShuffling = false;
+
+function updateDeckCards(deckCardCount = null) {
+    if (isShuffling) return;
+    if (deckCardCount === null) {
+        deckCardCount = (socket && socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined)
+            ? socket.roomData.gameData.deckCardCount
+            : 10;
+    }
+
     drawingDeck.innerHTML = '';
+
+    if (deckCardCount <= 0) {
+        return;
+    }
+
+    const visualCards = Math.min(deckCardCount, 10);
     const cardDOM = `
     <div class="card">
         <img src="/assets/cards/${userDeckSkin.val}/deck_backside.svg" alt="" draggable='false'>
     </div>`;
-    for (let i = 0; i < deckCardCount; i++) {
+    for (let i = 0; i < visualCards; i++) {
         drawingDeck.appendChild(htmlToElement(cardDOM));
 
-        if (i < deckCardCount - 1) continue;
+        if (i < visualCards - 1) continue;
 
         const cardElement = drawingDeck.children[i];
 
@@ -161,7 +176,7 @@ function updateDeckCards(deckCardCount = 10) {
             onDragEnd: async function (pointerEvent) {
                 isDragging = false;
 
-                const hit = this.hitTest(document.getElementById('self-cards'))
+                const hit = this.hitTest(document.getElementById('self-cards'));
                 let isDrawSuccess = null;
                 if (hit) isDrawSuccess = await onDrawingCard(deckCardCount);
                 if (hit && !isDrawSuccess) invalidAnimation();
@@ -200,9 +215,18 @@ function updateSkipButton() {
     }
 
     if (socket && socket.isSelfTurn) {
+        const deckCount = socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined
+            ? socket.roomData.gameData.deckCardCount
+            : (drawingDeck ? drawingDeck.children.length : 0);
+
         if (socket.roomData && socket.roomData.gameData && (socket.roomData.gameData.drawSum > 0 || socket.roomData.gameData.stackDraw)) {
-            skipButton.disabled = true;
-            skipButton.style.setProperty('--tip-msg', '"Must draw penalty cards"');
+            if (deckCount <= 0) {
+                skipButton.disabled = false;
+                skipButton.style.setProperty('--tip-msg', '"No cards in deck - Skip penalty"');
+            } else {
+                skipButton.disabled = true;
+                skipButton.style.setProperty('--tip-msg', '"Must draw penalty cards"');
+            }
         } else {
             skipButton.disabled = false;
             skipButton.style.setProperty('--tip-msg', '"Skip your turn"');
@@ -235,6 +259,18 @@ const tablePiles = document.getElementById('table-piles');
 const selfCards = document.getElementById('self-cards');
 const discardPile = document.getElementById('discard-pile');
 const drawingDeck = document.getElementById('drawing-deck');
+
+if (drawingDeck) {
+    drawingDeck.addEventListener('click', async () => {
+        if (isDragging || socket.isGameOver || !socket.isSelfTurn || isShuffling) return;
+        if (drawingDeck.children.length === 0) {
+            const isSuccess = await onDrawingCard(0);
+            if (!isSuccess) {
+                invalidAnimation(drawingDeck);
+            }
+        }
+    });
+}
 
 let zDepth = 200;
 let isDragging = false;
@@ -454,10 +490,25 @@ function invalidAnimation(cardElement = '.self-cards .card') {
     gsap.fromTo(cardElement, 0.5, { x: -1 }, { x: 1, ease: RoughEase.ease.config({ strength: 8, points: 11, template: Linear.easeNone, randomize: false }), clearProps: "x" })
 }
 
-async function shuffleDeckAnimation(maxPileSize = 10) {
+async function shuffleDeckAnimation(maxPileSize = 10, newDeckCardCount = null, resolveCallback = () => {}) {
+    if (newDeckCardCount === null) {
+        newDeckCardCount = (socket && socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined)
+            ? socket.roomData.gameData.deckCardCount
+            : maxPileSize;
+    }
+
     let discardCount = discardPile.children.length - 1;
     let drawingCount = drawingDeck.children.length;
     let shuffledCount = 0;
+
+    if (discardCount <= 0 && drawingCount <= 0) {
+        isShuffling = false;
+        updateDeckCards(newDeckCardCount);
+        if (typeof resolveCallback === 'function') resolveCallback();
+        return;
+    }
+
+    isShuffling = true;
 
     const [discardBox, drawingBox, dummyBox] = [
         discardPile.getBoundingClientRect(),
@@ -466,81 +517,105 @@ async function shuffleDeckAnimation(maxPileSize = 10) {
     ];
 
     const lastCard = discardPile.children[discardPile.children.length - 1];
-    const restDiscardCards = Array.from(discardPile.children).slice(0, discardPile.children.length - 1);
+    const restDiscardCards = Array.from(discardPile.children).slice(0, Math.max(0, discardPile.children.length - 1));
 
-    gsap.to(lastCard, {
-        x: "150%",
-        y: 0,
-        rotate: 0,
-        duration: 0.6,
-        ease: CustomEase.create("", ".28,.0,.28,.99"),
-    });
+    if (lastCard) {
+        gsap.to(lastCard, {
+            x: "150%",
+            y: 0,
+            rotate: 0,
+            duration: 0.6,
+            ease: CustomEase.create("", ".28,.0,.28,.99"),
+        });
+    }
 
     while (discardCount + drawingCount) {
         const randBool = Boolean(Math.round(Math.random()));
         if (!drawingCount || (randBool && discardCount)) {
             discardCount--;
             const cardElement = discardPile.children[discardCount];
-            gsap.set(cardElement, {
-                zIndex: shuffledCount
-            });
-            gsap.to(cardElement, {
-                x: dummyBox.left - discardBox.left,
-                y: dummyBox.top - discardBox.top,
-                rotate: 0,
-                rotationY: 180,
-                duration: 0.35,
-                ease: CustomEase.create("", ".28,.0,.28,.99"),
-                onUpdate: () => {
-                    if (gsap.getProperty(cardElement, "rotationY") >= 90) {
-                        cardElement.querySelector('img').src = `/assets/cards/${userDeckSkin.val}/deck_backside.svg`;
-                        cardElement.querySelector('img').style.transform = 'scaleX(-1)';
+            if (cardElement) {
+                gsap.set(cardElement, {
+                    zIndex: shuffledCount
+                });
+                gsap.to(cardElement, {
+                    x: dummyBox.left - discardBox.left,
+                    y: dummyBox.top - discardBox.top,
+                    rotate: 0,
+                    rotationY: 180,
+                    duration: 0.35,
+                    ease: CustomEase.create("", ".28,.0,.28,.99"),
+                    onUpdate: () => {
+                        if (gsap.getProperty(cardElement, "rotationY") >= 90) {
+                            const img = cardElement.querySelector('img');
+                            if (img) {
+                                img.src = `/assets/cards/${userDeckSkin.val}/deck_backside.svg`;
+                                img.style.transform = 'scaleX(-1)';
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
         } else if (!discardCount || (!randBool && drawingCount)) {
             drawingCount--;
             const cardElement = drawingDeck.children[drawingCount];
-            gsap.set(cardElement, {
-                zIndex: shuffledCount
-            });
-            gsap.to(cardElement, {
-                x: dummyBox.left - drawingBox.left,
-                y: dummyBox.top - drawingBox.top,
-                rotate: 0,
-                duration: 0.35,
-                ease: CustomEase.create("", ".28,.0,.28,.99"),
-            });
+            if (cardElement) {
+                gsap.set(cardElement, {
+                    zIndex: shuffledCount
+                });
+                gsap.to(cardElement, {
+                    x: dummyBox.left - drawingBox.left,
+                    y: dummyBox.top - drawingBox.top,
+                    rotate: 0,
+                    duration: 0.35,
+                    ease: CustomEase.create("", ".28,.0,.28,.99"),
+                });
+            }
         }
         shuffledCount++;
         await new Promise(resolve => setTimeout(resolve, 250));
     }
 
-    gsap.to(lastCard, {
-        x: lastCard.style.getPropertyValue('--x'),
-        y: lastCard.style.getPropertyValue('--y'),
-        rotate: lastCard.style.getPropertyValue('--ang'),
-        duration: 0.6,
-        ease: CustomEase.create("", ".28,.0,.28,.99"),
-        clearProps: 'x, y, rotate',
-    });
+    if (lastCard && lastCard.style) {
+        gsap.to(lastCard, {
+            x: 0,
+            y: 0,
+            rotate: lastCard.style.getPropertyValue('--ang') || 0,
+            duration: 0.6,
+            ease: CustomEase.create("", ".28,.0,.28,.99"),
+            clearProps: 'x, y, rotate',
+        });
+    }
+
     gsap.to(restDiscardCards, {
         x: drawingBox.left - discardBox.left,
         y: 0,
         duration: 0.6,
         ease: CustomEase.create("", ".28,.0,.28,.99"),
     });
-    gsap.to(drawingDeck.children, {
-        x: 0,
-        y: 0,
-        duration: 0.6,
-        ease: CustomEase.create("", ".28,.0,.28,.99"),
-    });
 
-    setTimeout(() => {
-        restDiscardCards.forEach(element => discardPile.removeChild(element));
-        updateDeckCards(maxPileSize);
-    }, 600);
+    if (drawingDeck.children.length > 0) {
+        gsap.to(drawingDeck.children, {
+            x: 0,
+            y: 0,
+            duration: 0.6,
+            ease: CustomEase.create("", ".28,.0,.28,.99"),
+        });
+    }
+
+    await new Promise(resolve => {
+        setTimeout(() => {
+            restDiscardCards.forEach(element => {
+                if (element.parentNode === discardPile) {
+                    discardPile.removeChild(element);
+                }
+            });
+            isShuffling = false;
+            updateDeckCards(newDeckCardCount);
+            if (typeof resolveCallback === 'function') resolveCallback();
+            resolve();
+        }, 600);
+    });
 }
 
 function groundCardAnimation() {
@@ -722,7 +797,9 @@ async function onThrowingCard(cardElement) {
     if (socket.isGameOver) return false;
     const cardContainers = document.querySelectorAll('.card-container');
     const index = Array.prototype.indexOf.call(cardContainers, cardElement);
-    const cardName = socket.selfCards[index]
+    const cardName = socket.selfCards[index];
+
+    discardPileAnimationQueue.paused = true;
 
     const isValid = await new Promise(resolve => {
         socket.emit(
@@ -740,20 +817,21 @@ async function onThrowingCard(cardElement) {
     });
 
     if (isValid) {
-        discardPileAnimationQueue.push(resolve => {
-            addPileCard(cardName, socket.maxPileSize);
-            selfCards.removeChild(cardElement);
-            socket.selfCards.splice(index, 1);
-            updateCardPositions();
-            resolve();
-        });
+        addPileCard(cardName, socket.maxPileSize);
+        selfCards.removeChild(cardElement);
+        socket.selfCards.splice(index, 1);
+        updateCardPositions();
+        discardPileAnimationQueue.paused = false;
+        discardPileAnimationQueue.process();
         return true;
     }
+    discardPileAnimationQueue.paused = false;
+    discardPileAnimationQueue.process();
     return false;
 }
 
 async function onDrawingCard(deckCardCount) {
-    if (socket.isGameOver) return false;
+    if (socket.isGameOver || isShuffling) return false;
     const drawResult = await new Promise(resolve => {
         socket.emit(
             'attempt draw',
@@ -773,7 +851,10 @@ async function onDrawingCard(deckCardCount) {
             addSelfCard(socket.selfCards.length, card);
             socket.selfCards.push(card);
         });
-        updateDeckCards(deckCardCount);
+        if (socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined) {
+            socket.roomData.gameData.deckCardCount = Math.max(0, socket.roomData.gameData.deckCardCount - drawResult.length);
+        }
+        updateDeckCards();
         return true;
     }
 
@@ -784,7 +865,10 @@ async function onDrawingCard(deckCardCount) {
 // Additional socket functionality
 
 socket.on('reshuffle', data => {
-    shuffleDeckAnimation(socket.maxPileSize);
+    isShuffling = true;
+    discardPileAnimationQueue.push(resolve => {
+        shuffleDeckAnimation(socket.maxPileSize, data ? data.deckCardCount : null, resolve);
+    });
 });
 
 socket.on('update turn', data => {
@@ -809,6 +893,7 @@ socket.on('update turn', data => {
     if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.data.userId] !== undefined) {
         userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
     }
+    updateDeckCards();
     updateSkipButton();
 });
 

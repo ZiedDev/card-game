@@ -121,9 +121,9 @@ const iteratorFuncs = {
 
 function reshuffleDiscardIntoAvailable(roomData) {
     if (!roomData || !roomData.discardDeck) return false;
-    const lastCard = roomData.lastPileCards && roomData.lastPileCards.length > 0
+    const lastCard = (roomData.lastPileCards && roomData.lastPileCards.length > 0)
         ? roomData.lastPileCards[roomData.lastPileCards.length - 1]
-        : null;
+        : (roomData.gameData && roomData.gameData.groundCard ? roomData.gameData.groundCard : null);
 
     let cardsAdded = false;
     roomData.discardDeck.forEach((value, key) => {
@@ -169,11 +169,6 @@ function pullAndUpdateAvailableDeck(roomData, nonAction = false) {
         roomData.availableDeck.delete(choice);
     } else {
         roomData.availableDeck.set(choice, currentCount - 1);
-    }
-
-    if (sumMap(roomData.availableDeck) <= 0) {
-        const reshuffleDone = reshuffleDiscardIntoAvailable(roomData);
-        return [choice, reshuffleDone || reshuffled];
     }
 
     return [choice, reshuffled];
