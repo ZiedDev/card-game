@@ -868,16 +868,41 @@ async function onDrawingCard(deckCardCount) {
         );
     });
 
-    if (drawResult && Array.isArray(drawResult)) {
-        drawResult.forEach(card => {
-            addSelfCard(socket.selfCards.length, card);
-            socket.selfCards.push(card);
-        });
-        updatePlayerCardCount(socket.data.userId, socket.selfCards.length);
+    if (drawResult && Array.isArray(drawResult) && drawResult.length > 0) {
         if (socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined) {
             socket.roomData.gameData.deckCardCount = Math.max(0, socket.roomData.gameData.deckCardCount - drawResult.length);
         }
         updateDeckCards();
+
+        const startIndex = socket.selfCards.length;
+
+        drawResult.forEach(card => {
+            addSelfCard(socket.selfCards.length, card, false);
+            socket.selfCards.push(card);
+        });
+
+        updateCardPositions();
+        updatePlayerCardCount(socket.data.userId, socket.selfCards.length);
+
+        const newCardContainers = Array.from(selfCards.children).slice(startIndex);
+        const newInnerCards = newCardContainers.map(c => c.querySelector('.card')).filter(Boolean);
+
+        if (newInnerCards.length > 0) {
+            const staggerDelay = drawResult.length <= 1 ? 0 : (drawResult.length <= 4 ? 0.12 : (drawResult.length <= 8 ? 0.08 : 0.06));
+
+            gsap.fromTo(newInnerCards, {
+                y: 100,
+                scale: 0.85,
+            }, {
+                y: 0,
+                scale: 1,
+                duration: 0.35,
+                stagger: staggerDelay,
+                ease: "power2.out",
+                clearProps: "y,scale,transform",
+            });
+        }
+
         return true;
     }
 
