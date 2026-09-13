@@ -330,14 +330,17 @@ const attemptThrow = (socket, params) => {
     room.gameData.consecutiveDraws = 0;
 
     let step = 1;
+    let skippedUser = null;
     // reverse iterator if reverse
     if (cardParts[0] == 'reverse') {
         room.gameData.direction = room.gameData.direction == 'cw' ? 'acw' : 'cw';
         if (room.permaUserSet && room.permaUserSet.size == 2) {
             step = 2;
+            skippedUser = getNextPlayer(room, 1);
         }
     } else if (cardParts[0] == 'skip') {
         step = 2;
+        skippedUser = getNextPlayer(room, 1);
     }
 
     // update wildColor if wild (only if game is continuing)
@@ -415,6 +418,22 @@ const attemptThrow = (socket, params) => {
         io.to(roomCode).except(socketId).emit('throw other', throwPayload);
     } else {
         io.to(roomCode).emit('throw other', throwPayload);
+    }
+
+    if (cardParts[0] == 'reverse') {
+        io.to(roomCode).emit('reverse card', {
+            playedBy: currUser,
+            direction: room.gameData.direction,
+            cardName: cardName,
+        });
+    }
+
+    if (skippedUser) {
+        io.to(roomCode).emit('player skipped', {
+            skippedUserId: skippedUser,
+            skippedBy: currUser,
+            cardName: cardName,
+        });
     }
 
     if (reshuffled) {
@@ -617,6 +636,7 @@ const attemptDraw = (socket, params) => {
     }
 
     if (stackDraw && wildColor) {
+        const targetColor = wildColor;
         result = drawCards(socket, { count: null, grantUser: currUser, tillColor: wildColor, nonAction: null, });
         room.gameData.stackDraw = false;
         if (result == null) {
@@ -639,6 +659,13 @@ const attemptDraw = (socket, params) => {
         } else {
             io.to(roomCode).emit('draw other', stackDrawPayload);
         }
+
+        io.to(roomCode).emit('wild stack draw', {
+            userId: currUser,
+            targetColor: targetColor,
+            cardCount: result.length,
+            deckCardCount: room.gameData.deckCardCount,
+        });
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
             let nextUser = advanceTurn(room);

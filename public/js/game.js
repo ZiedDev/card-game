@@ -408,6 +408,74 @@ function addPileCard(cardName = getRandomCard(), maxPileSize = 10, randomizedVar
 /*----------------------------------------------*/
 // Animation functions
 
+/**
+ * Framework: Triggered for all clients when a player draws cards after a wild stack card (drawing until target color).
+ * @param {Object} params
+ * @param {string} params.userId - ID of the player drawing cards
+ * @param {string} params.userName - Display name of the player drawing cards
+ * @param {number} params.userIndex - Index of the player in the turn list / player container
+ * @param {number} params.userCount - Total number of players
+ * @param {string} params.targetColor - Target wild color ('red', 'blue', 'green', 'yellow')
+ * @param {number} params.cardCount - Number of cards drawn
+ * @param {boolean} params.isSelf - True if the local client is the player drawing
+ * @param {Function} resolve - Callback to advance the animation queue when finished
+ */
+function wildStackDrawAnimation({ userId, userName, userIndex, userCount, targetColor, cardCount, isSelf } = {}, resolve = () => {}) {
+    // TODO: Add your wild stack draw animation here
+    console.log(`[Animation Framework] wildStackDrawAnimation -> user: ${userName || userId}, targetColor: ${targetColor}, cardCount: ${cardCount}, isSelf: ${isSelf}`);
+    if (typeof resolve === 'function') resolve();
+}
+
+/**
+ * Framework: Triggered specifically for the client that got skipped.
+ * @param {Object} params
+ * @param {string} params.skippedBy - ID of the player who played the skip card
+ * @param {string} params.skippedByName - Display name of the player who played the skip card
+ * @param {string} params.cardName - Name of the skip card (e.g. 'skip_blue')
+ * @param {Function} resolve - Callback to advance the animation queue when finished
+ */
+function selfSkippedAnimation({ skippedBy, skippedByName, cardName } = {}, resolve = () => {}) {
+    // TODO: Add your animation for when this client gets skipped here
+    console.log(`[Animation Framework] selfSkippedAnimation -> skippedBy: ${skippedByName || skippedBy}, cardName: ${cardName}`);
+    if (typeof resolve === 'function') resolve();
+}
+
+/**
+ * Framework: Triggered for all other clients when another player gets skipped.
+ * @param {Object} params
+ * @param {string} params.skippedUserId - ID of the player who got skipped
+ * @param {string} params.skippedUserName - Display name of the player who got skipped
+ * @param {number} params.skippedUserIndex - Index of the skipped player in the player list
+ * @param {number} params.userCount - Total number of players
+ * @param {string} params.skippedBy - ID of the player who played the skip card
+ * @param {string} params.skippedByName - Display name of the player who played the skip card
+ * @param {string} params.cardName - Name of the skip card (e.g. 'skip_blue')
+ * @param {Function} resolve - Callback to advance the animation queue when finished
+ */
+function otherSkippedAnimation({ skippedUserId, skippedUserName, skippedUserIndex, userCount, skippedBy, skippedByName, cardName } = {}, resolve = () => {}) {
+    // TODO: Add your animation for when another client gets skipped here
+    console.log(`[Animation Framework] otherSkippedAnimation -> skippedUser: ${skippedUserName || skippedUserId}, skippedBy: ${skippedByName || skippedBy}, cardName: ${cardName}`);
+    if (typeof resolve === 'function') resolve();
+}
+
+/**
+ * Framework: Triggered for all clients when a reverse direction card is played.
+ * @param {Object} params
+ * @param {string} params.playedBy - ID of the player who played reverse
+ * @param {string} params.playedByName - Display name of the player who played reverse
+ * @param {string} params.direction - New turn direction ('cw' or 'acw')
+ * @param {boolean} params.isSelf - True if the local client played the reverse card
+ * @param {number} params.userIndex - Index of the player who played reverse
+ * @param {number} params.userCount - Total number of players
+ * @param {string} params.cardName - Name of the reverse card (e.g. 'reverse_red')
+ * @param {Function} resolve - Callback to advance the animation queue when finished
+ */
+function reverseCardAnimation({ playedBy, playedByName, direction, isSelf, userIndex, userCount, cardName } = {}, resolve = () => {}) {
+    // TODO: Add your reverse direction animation here
+    console.log(`[Animation Framework] reverseCardAnimation -> playedBy: ${playedByName || playedBy}, direction: ${direction}, isSelf: ${isSelf}, cardName: ${cardName}`);
+    if (typeof resolve === 'function') resolve();
+}
+
 const discardPileAnimationQueue = new AutoQueue();
 const otherPositions = document.getElementById('other-positions');
 const otherPositionsContainer = document.getElementById('other-positions-container');
@@ -992,6 +1060,78 @@ socket.on('update wildColor', data => {
     socket.roomData.gameData.wildColor = data.selectedColor;
     discardPileAnimationQueue.push(resolve => {
         wildColorChangeAnimation(data.selectedColor, resolve);
+    });
+});
+
+socket.on('wild stack draw', data => {
+    if (!data || !socket.roomData) return;
+    const isSelf = data.userId === socket.data.userId;
+    const permaUsers = socket.roomData.permaUserSet ? Array.from(socket.roomData.permaUserSet) : Object.keys(socket.roomData.usersData || {});
+    const userIndex = permaUsers.indexOf(data.userId);
+    const userCount = permaUsers.length || 1;
+    const userData = (socket.roomData.usersData && socket.roomData.usersData[data.userId]) || {};
+
+    discardPileAnimationQueue.push(resolve => {
+        wildStackDrawAnimation({
+            userId: data.userId,
+            userName: userData.userName || data.userId,
+            userIndex: userIndex !== -1 ? userIndex : 0,
+            userCount: userCount,
+            targetColor: data.targetColor,
+            cardCount: data.cardCount,
+            isSelf: isSelf,
+        }, resolve);
+    });
+});
+
+socket.on('player skipped', data => {
+    if (!data || !socket.roomData) return;
+    const isSelf = data.skippedUserId === socket.data.userId;
+    const permaUsers = socket.roomData.permaUserSet ? Array.from(socket.roomData.permaUserSet) : Object.keys(socket.roomData.usersData || {});
+    const skippedUserIndex = permaUsers.indexOf(data.skippedUserId);
+    const userCount = permaUsers.length || 1;
+    const skippedUserData = (socket.roomData.usersData && socket.roomData.usersData[data.skippedUserId]) || {};
+    const skippedByUserData = (socket.roomData.usersData && socket.roomData.usersData[data.skippedBy]) || {};
+
+    discardPileAnimationQueue.push(resolve => {
+        if (isSelf) {
+            selfSkippedAnimation({
+                skippedBy: data.skippedBy,
+                skippedByName: skippedByUserData.userName || data.skippedBy,
+                cardName: data.cardName,
+            }, resolve);
+        } else {
+            otherSkippedAnimation({
+                skippedUserId: data.skippedUserId,
+                skippedUserName: skippedUserData.userName || data.skippedUserId,
+                skippedUserIndex: skippedUserIndex !== -1 ? skippedUserIndex : 0,
+                userCount: userCount,
+                skippedBy: data.skippedBy,
+                skippedByName: skippedByUserData.userName || data.skippedBy,
+                cardName: data.cardName,
+            }, resolve);
+        }
+    });
+});
+
+socket.on('reverse card', data => {
+    if (!data || !socket.roomData) return;
+    const isSelf = data.playedBy === socket.data.userId;
+    const permaUsers = socket.roomData.permaUserSet ? Array.from(socket.roomData.permaUserSet) : Object.keys(socket.roomData.usersData || {});
+    const userIndex = permaUsers.indexOf(data.playedBy);
+    const userCount = permaUsers.length || 1;
+    const playedByUserData = (socket.roomData.usersData && socket.roomData.usersData[data.playedBy]) || {};
+
+    discardPileAnimationQueue.push(resolve => {
+        reverseCardAnimation({
+            playedBy: data.playedBy,
+            playedByName: playedByUserData.userName || data.playedBy,
+            direction: data.direction,
+            isSelf: isSelf,
+            userIndex: userIndex !== -1 ? userIndex : 0,
+            userCount: userCount,
+            cardName: data.cardName,
+        }, resolve);
     });
 });
 
