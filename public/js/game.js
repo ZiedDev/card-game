@@ -94,6 +94,27 @@ function getRandomCard() { // placeholder
 const unoButton = document.getElementById('uno-button');
 const skipButton = document.getElementById('skip-button');
 
+function updatePlayerCardCount(userId, count) {
+    if (!socket) return;
+    if (!socket.roomData) socket.roomData = {};
+    if (!socket.roomData.usersCardCounts) socket.roomData.usersCardCounts = {};
+    socket.roomData.usersCardCounts[userId] = count;
+
+    if (socket.data && userId === socket.data.userId) {
+        const userCardsCountEl = document.getElementById('user-cards-count');
+        if (userCardsCountEl) {
+            userCardsCountEl.innerText = count;
+        }
+    }
+    const playerInfo = document.getElementById(`${userId}-player-info`);
+    if (playerInfo) {
+        const countEl = playerInfo.querySelector('.player-cards-count');
+        if (countEl) {
+            countEl.innerText = count;
+        }
+    }
+}
+
 function updateTurnIndicator(index) {
     const turnIndicator = document.getElementById('turn-indicator');
     const players = document.querySelectorAll('.player-info');
@@ -821,6 +842,7 @@ async function onThrowingCard(cardElement) {
         selfCards.removeChild(cardElement);
         socket.selfCards.splice(index, 1);
         updateCardPositions();
+        updatePlayerCardCount(socket.data.userId, socket.selfCards.length);
         discardPileAnimationQueue.paused = false;
         discardPileAnimationQueue.process();
         return true;
@@ -851,6 +873,7 @@ async function onDrawingCard(deckCardCount) {
             addSelfCard(socket.selfCards.length, card);
             socket.selfCards.push(card);
         });
+        updatePlayerCardCount(socket.data.userId, socket.selfCards.length);
         if (socket.roomData && socket.roomData.gameData && socket.roomData.gameData.deckCardCount !== undefined) {
             socket.roomData.gameData.deckCardCount = Math.max(0, socket.roomData.gameData.deckCardCount - drawResult.length);
         }
@@ -885,13 +908,12 @@ socket.on('update turn', data => {
         const isAway = socket.roomData.rejoinableUsers && socket.roomData.rejoinableUsers.has(playerInfoId);
         playerInfo.classList.toggle('away', !!isAway);
         if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[playerInfoId] !== undefined) {
-            const countEl = playerInfo.querySelector('.player-cards-count');
-            if (countEl) countEl.innerText = socket.roomData.usersCardCounts[playerInfoId];
+            updatePlayerCardCount(playerInfoId, socket.roomData.usersCardCounts[playerInfoId]);
         }
     });
 
     if (socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[socket.data.userId] !== undefined) {
-        userCardsCount.innerText = socket.roomData.usersCardCounts[socket.data.userId];
+        updatePlayerCardCount(socket.data.userId, socket.roomData.usersCardCounts[socket.data.userId]);
     }
     updateDeckCards();
     updateSkipButton();
@@ -899,6 +921,11 @@ socket.on('update turn', data => {
 
 socket.on('throw other', data => {
     if (socket.data.userId == data.exceptUser) return; // redundant
+    if (data.userCardCount !== undefined) {
+        updatePlayerCardCount(data.exceptUser, data.userCardCount);
+    } else if (socket.roomData && socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[data.exceptUser] !== undefined) {
+        updatePlayerCardCount(data.exceptUser, Math.max(0, socket.roomData.usersCardCounts[data.exceptUser] - 1));
+    }
     discardPileAnimationQueue.push(resolve => throwFromOther(
         data.cardName,
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
@@ -910,11 +937,20 @@ socket.on('throw other', data => {
 
 socket.on('draw other', data => {
     if (socket.data.userId == data.exceptUser) return; // redundant
+    if (data.userCardCount !== undefined) {
+        updatePlayerCardCount(data.exceptUser, data.userCardCount);
+    } else if (socket.roomData && socket.roomData.usersCardCounts && socket.roomData.usersCardCounts[data.exceptUser] !== undefined) {
+        updatePlayerCardCount(data.exceptUser, socket.roomData.usersCardCounts[data.exceptUser] + (data.cardCount || 1));
+    }
+    if (data.deckCardCount !== undefined && socket.roomData && socket.roomData.gameData) {
+        socket.roomData.gameData.deckCardCount = data.deckCardCount;
+        updateDeckCards();
+    }
     drawToOther(
         data.cardCount,
         Array.from(socket.roomData.permaUserSet).indexOf(data.exceptUser),
         socket.roomData.permaUserSet.size
-    )
+    );
 });
 
 socket.on('update drawSum', data => {
@@ -1020,6 +1056,7 @@ socket.emit('fetch cards', {}, (result) => {
             addSelfCard(index, card, false);
         });
         socket.selfCards = result;
+        updatePlayerCardCount(socket.data.userId, result.length);
     }
 });
 setTimeout(() => {

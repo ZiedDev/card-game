@@ -406,16 +406,15 @@ const attemptThrow = (socket, params) => {
     }
 
     // socket emits: emit 'throw other' FIRST so clients register the card landing on the discard pile before reshuffle
+    const throwPayload = {
+        cardName: cardName,
+        exceptUser: currUser,
+        userCardCount: room.usersCardCounts[currUser],
+    };
     if (socketId) {
-        io.to(roomCode).except(socketId).emit('throw other', {
-            cardName: cardName,
-            exceptUser: currUser,
-        });
+        io.to(roomCode).except(socketId).emit('throw other', throwPayload);
     } else {
-        io.to(roomCode).emit('throw other', {
-            cardName: cardName,
-            exceptUser: currUser,
-        });
+        io.to(roomCode).emit('throw other', throwPayload);
     }
 
     if (reshuffled) {
@@ -540,6 +539,8 @@ const performAutoPlay = (roomCode) => {
         io.to(roomCode).emit('draw other', {
             cardCount: 1,
             exceptUser: currUser,
+            userCardCount: room.usersCardCounts[currUser],
+            deckCardCount: room.gameData.deckCardCount,
         });
 
         const drawnCard = drawn[0];
@@ -627,16 +628,16 @@ const attemptDraw = (socket, params) => {
             scheduleAutoPlayIfAway(roomCode);
             return null;
         }
+        const stackDrawPayload = {
+            cardCount: result.length,
+            exceptUser: currUser,
+            userCardCount: room.usersCardCounts[currUser],
+            deckCardCount: room.gameData.deckCardCount,
+        };
         if (socketId) {
-            io.to(roomCode).except(socketId).emit('draw other', {
-                cardCount: result.length,
-                exceptUser: currUser,
-            });
+            io.to(roomCode).except(socketId).emit('draw other', stackDrawPayload);
         } else {
-            io.to(roomCode).emit('draw other', {
-                cardCount: result.length,
-                exceptUser: currUser,
-            });
+            io.to(roomCode).emit('draw other', stackDrawPayload);
         }
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
@@ -666,16 +667,16 @@ const attemptDraw = (socket, params) => {
             scheduleAutoPlayIfAway(roomCode);
             return null;
         }
+        const drawSumPayload = {
+            cardCount: result.length,
+            exceptUser: currUser,
+            userCardCount: room.usersCardCounts[currUser],
+            deckCardCount: room.gameData.deckCardCount,
+        };
         if (socketId) {
-            io.to(roomCode).except(socketId).emit('draw other', {
-                cardCount: result.length,
-                exceptUser: currUser,
-            });
+            io.to(roomCode).except(socketId).emit('draw other', drawSumPayload);
         } else {
-            io.to(roomCode).emit('draw other', {
-                cardCount: result.length,
-                exceptUser: currUser,
-            });
+            io.to(roomCode).emit('draw other', drawSumPayload);
         }
 
         if (preferences["draw-2 and draw-4 skips"] == 'skip') {
@@ -720,16 +721,16 @@ const attemptDraw = (socket, params) => {
         return null;
     }
 
+    const drawPayload = {
+        cardCount: 1,
+        exceptUser: currUser,
+        userCardCount: room.usersCardCounts[currUser],
+        deckCardCount: room.gameData.deckCardCount,
+    };
     if (socketId) {
-        io.to(roomCode).except(socketId).emit('draw other', {
-            cardCount: 1,
-            exceptUser: currUser,
-        });
+        io.to(roomCode).except(socketId).emit('draw other', drawPayload);
     } else {
-        io.to(roomCode).emit('draw other', {
-            cardCount: 1,
-            exceptUser: currUser,
-        });
+        io.to(roomCode).emit('draw other', drawPayload);
     }
     room.gameData.consecutiveDraws++;
 
